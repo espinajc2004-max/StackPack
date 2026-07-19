@@ -2,6 +2,17 @@ import type { CommandDefinition, PackageManager } from "../package-manager/types
 
 export type CreatorId = "vite" | "next";
 
+/** Answers to the questions create-next-app would normally ask itself. */
+export type NextCustomAnswers = {
+  linter: "eslint" | "biome" | "none";
+  reactCompiler: boolean;
+  tailwind: boolean;
+  srcDir: boolean;
+  appRouter: boolean;
+  importAlias: string;
+  agentsMd: boolean;
+};
+
 export type CreatorOptions = {
   /**
    * Omitted when the official creator asks for the language itself (custom
@@ -15,6 +26,8 @@ export type CreatorOptions = {
    * questions. Adapters that have no extra questions ignore this.
    */
   setupStyle?: "recommended" | "custom";
+  /** Present when the Next.js adapter collected custom answers. */
+  nextAnswers?: NextCustomAnswers;
 };
 
 export type CreatorAdapter = {

@@ -1,3 +1,4 @@
+
 import type { CreatorAdapter } from "../types.js";
 
 /**
@@ -5,6 +6,11 @@ import type { CreatorAdapter } from "../types.js";
  * official creator asks for the framework (React, Vue, Svelte, ...) and the
  * variant (TypeScript, JavaScript, SWC, ...) itself. Preset runs recorded a
  * React project, so they pin the matching official React template.
+ *
+ * --no-immediate is always passed: it suppresses only create-vite's
+ * "Install with npm and start now?" step (which would install and then
+ * block on a dev server) while keeping the framework and variant prompts,
+ * so dependencies install once at the end together with the integrations.
  */
 export const viteAdapter: CreatorAdapter = {
   id: "vite",
@@ -24,19 +30,17 @@ export const viteAdapter: CreatorAdapter = {
     return { setupStyle: "custom" };
   },
   buildCommand(projectName, options, packageManager, parentDirectory) {
-    const templateArgs = options.language
-      ? ["--template", options.language === "typescript" ? "react-ts" : "react"]
-      : [];
+    const templateArgs = [
+      ...(options.language
+        ? ["--template", options.language === "typescript" ? "react-ts" : "react"]
+        : []),
+      "--no-immediate",
+    ];
     switch (packageManager) {
       case "npm":
         return {
           command: "npm",
-          args: [
-            "create",
-            "vite@latest",
-            projectName,
-            ...(templateArgs.length > 0 ? ["--", ...templateArgs] : []),
-          ],
+          args: ["create", "vite@latest", projectName, "--", ...templateArgs],
           cwd: parentDirectory,
           interactive: true,
         };

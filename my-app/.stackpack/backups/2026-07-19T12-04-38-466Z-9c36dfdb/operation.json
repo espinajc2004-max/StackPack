@@ -1,0 +1,18 @@
+{
+  "operationId": "2026-07-19T12-04-38-466Z-9c36dfdb",
+  "startedAt": "2026-07-19T12:04:38.476Z",
+  "finishedAt": "2026-07-19T12:04:54.028Z",
+  "integrations": [
+    "react-router",
+    "zustand",
+    "tanstack-query"
+  ],
+  "filesBackedUp": [
+    "package.json",
+    "package.json"
+  ],
+  "commandsRun": [
+    "npm install --save @tanstack/react-query@latest @tanstack/react-query-devtools@latest react-router-dom@latest zustand@latest"
+  ],
+  "status": "completed"
+}
