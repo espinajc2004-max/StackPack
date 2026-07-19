@@ -5,7 +5,15 @@ export const recipeMetadataSchema = z.object({
   id: z.string().regex(/^[a-z0-9-]+$/),
   recipeVersion: z.number().int().positive(),
   name: z.string().min(1),
-  category: z.enum(["routing", "state-management", "data-fetching", "forms-validation", "testing"]),
+  category: z.enum([
+    "routing",
+    "state-management",
+    "data-fetching",
+    "forms-validation",
+    "ui",
+    "orm",
+    "testing",
+  ]),
   status: z.enum(["stable", "experimental", "deprecated"]),
   officialSource: z.object({
     documentationUrl: z.string().url(),

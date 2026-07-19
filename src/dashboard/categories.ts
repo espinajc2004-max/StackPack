@@ -1,3 +1,4 @@
+import pc from "picocolors";
 import { guard, p } from "../ui/prompts.js";
 import type { IntegrationAvailability } from "../engine/filter-integrations.js";
 import { runSingleSelectCategory, type CategoryResult } from "./category-shared.js";
@@ -98,6 +99,36 @@ export async function runDataFetchingCategory(
   });
 }
 
+export async function runUiCategory(
+  selection: SetupSelection,
+  availabilities: IntegrationAvailability[],
+): Promise<void> {
+  const result = await runSingleSelectCategory({
+    title: "UI Components",
+    prompt: "Choose a UI library",
+    availabilities: availabilities.filter((a) => a.recipe.category === "ui"),
+    current: selection.ui,
+  });
+  applyResult(result, (value) => {
+    selection.ui = value;
+  });
+}
+
+export async function runOrmCategory(
+  selection: SetupSelection,
+  availabilities: IntegrationAvailability[],
+): Promise<void> {
+  const result = await runSingleSelectCategory({
+    title: "Database / ORM",
+    prompt: "Choose an ORM (dependencies only; you write the setup files)",
+    availabilities: availabilities.filter((a) => a.recipe.category === "orm"),
+    current: selection.orm,
+  });
+  applyResult(result, (value) => {
+    selection.orm = value;
+  });
+}
+
 export async function runFormsValidationCategory(
   selection: SetupSelection,
   availabilities: IntegrationAvailability[],
@@ -125,21 +156,51 @@ export async function runTestingCategory(
     return;
   }
 
-  const chosen = guard(
-    await p.multiselect({
-      message: "Select testing integrations (space to toggle, enter to confirm)",
-      required: false,
-      initialValues: selection.testing.map((entry) => entry.id),
-      options: testing.map((availability) => ({
-        value: availability.recipe.id,
-        label: availability.recipe.name,
-        hint:
-          availability.compatibility === "already-installed"
-            ? `already installed${availability.detection.installedVersion ? ` at ${availability.detection.installedVersion}` : ""}`
-            : availability.recipe.installationSummary,
-      })),
+  const hintFor = (availability: IntegrationAvailability): string =>
+    availability.compatibility === "already-installed"
+      ? `already installed${availability.detection.installedVersion ? ` at ${availability.detection.installedVersion}` : ""}`
+      : availability.recipe.installationSummary;
+
+  // A plain select (arrow keys + Enter) like every other category; the
+  // space-to-toggle multiselect confused users into confirming nothing.
+  const currentIds = selection.testing.map((entry) => entry.id);
+  const choice = guard(
+    await p.select({
+      message: "Choose testing tools",
+      initialValue: currentIds.length > 1 ? "__all__" : (currentIds[0] ?? testing[0]?.recipe.id),
+      options: [
+        ...testing.map((availability) => ({
+          value: availability.recipe.id,
+          label:
+            currentIds.length === 1 && currentIds[0] === availability.recipe.id
+              ? `${availability.recipe.name} ${pc.green("✓")}`
+              : availability.recipe.name,
+          hint: hintFor(availability),
+        })),
+        ...(testing.length > 1
+          ? [
+              {
+                value: "__all__",
+                label:
+                  testing.map((availability) => availability.recipe.name).join(" + ") +
+                  (currentIds.length > 1 ? ` ${pc.green("✓")}` : ""),
+                hint: "install all testing tools",
+              },
+            ]
+          : []),
+        { value: "__none__", label: "None", hint: "remove testing selections" },
+        { value: "__return__", label: "Return without changes" },
+      ],
     }),
   );
+
+  if (choice === "__return__") return;
+  if (choice === "__none__") {
+    selection.testing = [];
+    return;
+  }
+  const chosen =
+    choice === "__all__" ? testing.map((availability) => availability.recipe.id) : [choice];
 
   const next: SetupSelection["testing"] = [];
   for (const id of chosen) {
