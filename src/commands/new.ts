@@ -27,6 +27,35 @@ async function directoryState(target: string): Promise<"missing" | "empty" | "oc
   }
 }
 
+/**
+ * Creating a project inside an existing project is allowed but easy to mix up
+ * later (two nested package.json trees), so it needs an explicit confirmation.
+ */
+async function confirmIfInsideExistingProject(): Promise<boolean> {
+  const hasPackageJson = await fs
+    .access(path.join(process.cwd(), "package.json"))
+    .then(() => true)
+    .catch(() => false);
+  if (!hasPackageJson) return true;
+  p.log.warn(
+    `This folder is already a project (package.json found):\n  ${process.cwd()}\nThe new project would be created inside it — nested projects are easy to confuse later.`,
+  );
+  const choice = guard(
+    await p.select({
+      message: "Create the new project inside this existing project anyway?",
+      options: [
+        {
+          value: "cancel",
+          label: "No, cancel",
+          hint: "cd to another folder first, then run stackpack again",
+        },
+        { value: "continue", label: "Yes, create it nested inside this project" },
+      ],
+    }),
+  );
+  return choice === "continue";
+}
+
 async function askProjectName(initial?: string): Promise<{ name: string; destination: string }> {
   let candidate = initial;
   for (;;) {
@@ -158,6 +187,10 @@ export async function runNew(
 ): Promise<void> {
   p.intro("StackPack — new project");
   p.log.message(pc.dim("Official project tooling with real-world integrations."));
+
+  if (!(await confirmIfInsideExistingProject())) {
+    throw new CancelledError();
+  }
 
   let preset: Preset | undefined;
   if (options.preset) {
