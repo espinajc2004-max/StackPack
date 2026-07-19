@@ -14,6 +14,7 @@ import {
   runPresetsShow,
 } from "./commands/presets.js";
 import { CancelledError } from "./utils/errors.js";
+import { getUpdateNotice } from "./utils/update-check.js";
 import { VERSION } from "./version.js";
 import type { PackageManager } from "./package-manager/types.js";
 
@@ -27,6 +28,11 @@ async function runMainMenu(): Promise<void> {
   p.log.message("Official project tooling with real-world integrations.");
   p.log.message("Presets stay on this device.");
   p.log.message(pc.dim("Ctrl+C on any question brings you back to this menu instead of exiting."));
+
+  const updateNotice = await getUpdateNotice(VERSION);
+  if (updateNotice) {
+    p.log.warn(pc.yellow(updateNotice));
+  }
 
   for (;;) {
     const choice = await p.select({
