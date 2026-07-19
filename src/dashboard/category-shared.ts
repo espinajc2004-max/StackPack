@@ -1,5 +1,5 @@
 import pc from "picocolors";
-import { guard, p } from "../ui/prompts.js";
+import { orBack, p } from "../ui/prompts.js";
 import type { IntegrationAvailability } from "../engine/filter-integrations.js";
 import type { IntegrationRecipe } from "../integrations/types.js";
 import type { SelectedIntegration } from "./state.js";
@@ -39,10 +39,11 @@ export async function runSingleSelectCategory(params: {
   prompt: string;
   availabilities: IntegrationAvailability[];
   current?: SelectedIntegration;
+  /** Returns null when the user backs out (Esc) instead of finishing. */
   collectOptions?: (
     recipe: IntegrationRecipe,
     currentOptions: Record<string, unknown>,
-  ) => Promise<Record<string, unknown>>;
+  ) => Promise<Record<string, unknown> | null>;
 }): Promise<CategoryResult> {
   const visible = params.availabilities.filter((a) => a.compatibility !== "incompatible");
   if (visible.length === 0) {
@@ -50,7 +51,7 @@ export async function runSingleSelectCategory(params: {
     return { kind: "unchanged" };
   }
 
-  const choice = guard(
+  const choice = orBack(
     await p.select({
       message: params.prompt,
       initialValue: params.current?.id ?? visible[0]?.recipe.id,
@@ -77,7 +78,7 @@ export async function runSingleSelectCategory(params: {
     }),
   );
 
-  if (choice === "__return__") return { kind: "unchanged" };
+  if (choice === null || choice === "__return__") return { kind: "unchanged" };
   if (choice === "__none__") return { kind: "removed" };
 
   const availability = visible.find((a) => a.recipe.id === choice);
@@ -85,7 +86,7 @@ export async function runSingleSelectCategory(params: {
   const recipe = availability.recipe;
 
   if (availability.compatibility === "already-installed") {
-    const action = guard(
+    const action = orBack(
       await p.select({
         message: `${recipe.name} is already installed. What would you like to do?`,
         options: [
@@ -99,7 +100,7 @@ export async function runSingleSelectCategory(params: {
         ],
       }),
     );
-    if (action === "keep") return { kind: "unchanged" };
+    if (action === null || action === "keep") return { kind: "unchanged" };
     if (action === "remove") return { kind: "removed" };
   }
 
@@ -111,6 +112,7 @@ export async function runSingleSelectCategory(params: {
         params.current?.id === recipe.id ? params.current.options : {},
       )
     : {};
+  if (options === null) return { kind: "unchanged" };
 
   // Picking an integration selects it right away; "None" in the category
   // list is the way to undo a selection.

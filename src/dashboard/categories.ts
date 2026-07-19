@@ -1,5 +1,5 @@
 import pc from "picocolors";
-import { guard, p } from "../ui/prompts.js";
+import { orBack, p } from "../ui/prompts.js";
 import type { IntegrationAvailability } from "../engine/filter-integrations.js";
 import { runSingleSelectCategory, type CategoryResult } from "./category-shared.js";
 import type { SetupSelection } from "./state.js";
@@ -38,7 +38,7 @@ export async function runStateManagementCategory(
     current: selection.stateManagement,
     collectOptions: async (recipe, currentOptions) => {
       if (recipe.id !== "redux-toolkit") return {};
-      const generateStore = guard(
+      const generateStore = orBack(
         await p.select({
           message: "Generate basic store files?",
           initialValue: currentOptions.generateStore === true ? "yes" : "no",
@@ -52,6 +52,7 @@ export async function runStateManagementCategory(
           ],
         }),
       );
+      if (generateStore === null) return null;
       return { generateStore: generateStore === "yes" };
     },
   });
@@ -71,13 +72,14 @@ export async function runDataFetchingCategory(
     current: selection.dataFetching,
     collectOptions: async (recipe, currentOptions) => {
       if (recipe.id !== "tanstack-query") return {};
-      const devtools = guard(
+      const devtools = orBack(
         await p.confirm({
           message: "Include TanStack Query Devtools?",
           initialValue: currentOptions.devtools !== false,
         }),
       );
-      const provider = guard(
+      if (devtools === null) return null;
+      const provider = orBack(
         await p.select({
           message: "Generate QueryClient and provider files?",
           initialValue: currentOptions.configureProvider === false ? "install-only" : "files",
@@ -91,6 +93,7 @@ export async function runDataFetchingCategory(
           ],
         }),
       );
+      if (provider === null) return null;
       return { devtools, configureProvider: provider === "files" };
     },
   });
@@ -164,7 +167,7 @@ export async function runTestingCategory(
   // A plain select (arrow keys + Enter) like every other category; the
   // space-to-toggle multiselect confused users into confirming nothing.
   const currentIds = selection.testing.map((entry) => entry.id);
-  const choice = guard(
+  const choice = orBack(
     await p.select({
       message: "Choose testing tools",
       initialValue: currentIds.length > 1 ? "__all__" : (currentIds[0] ?? testing[0]?.recipe.id),
@@ -194,7 +197,7 @@ export async function runTestingCategory(
     }),
   );
 
-  if (choice === "__return__") return;
+  if (choice === null || choice === "__return__") return;
   if (choice === "__none__") {
     selection.testing = [];
     return;
@@ -206,7 +209,7 @@ export async function runTestingCategory(
   for (const id of chosen) {
     const previous = selection.testing.find((entry) => entry.id === id);
     if (id === "vitest-react") {
-      const target = guard(
+      const target = orBack(
         await p.select({
           message: "What will you test?",
           initialValue: previous?.options.testTarget === "utils" ? "utils" : "components",
@@ -220,6 +223,7 @@ export async function runTestingCategory(
           ],
         }),
       );
+      if (target === null) return;
       next.push({ id, options: { testTarget: target } });
     } else if (id === "playwright") {
       p.note(

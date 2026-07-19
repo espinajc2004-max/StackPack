@@ -1,4 +1,4 @@
-import { guard, p } from "../ui/prompts.js";
+import { orBack, p } from "../ui/prompts.js";
 import { parseVersionSpec } from "../utils/versions.js";
 import { editablePackageNames, type SetupSelection } from "./state.js";
 
@@ -10,7 +10,7 @@ export async function runVersionEditor(selection: SetupSelection): Promise<void>
       return;
     }
 
-    const choice = guard(
+    const choice = orBack(
       await p.select({
         message: "Choose a package to set a version for",
         options: [
@@ -23,11 +23,11 @@ export async function runVersionEditor(selection: SetupSelection): Promise<void>
         ],
       }),
     );
-    if (choice === "__return__") return;
+    if (choice === null || choice === "__return__") return;
 
-    const input = guard(
+    const input = orBack(
       await p.text({
-        message: `Enter an npm version, range, or tag for ${choice}`,
+        message: `Enter an npm version, range, or tag for ${choice} (Esc to go back)`,
         placeholder: "latest",
         initialValue: selection.versionOverrides[choice] ?? "",
         validate(value) {
@@ -39,6 +39,7 @@ export async function runVersionEditor(selection: SetupSelection): Promise<void>
       }),
     );
 
+    if (input === null) continue;
     const trimmed = input.trim();
     const customPackage = selection.customPackages.find((pkg) => pkg.name === choice);
     if (trimmed.length === 0 || trimmed === "latest") {

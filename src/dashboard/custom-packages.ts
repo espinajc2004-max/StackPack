@@ -1,4 +1,4 @@
-import { guard, p } from "../ui/prompts.js";
+import { orBack, p } from "../ui/prompts.js";
 import { formatPackageSpecifier, parsePackageSpecifier } from "../utils/package-specifier.js";
 import {
   forgetCustomPackage,
@@ -15,7 +15,7 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
       (entry) => !selection.customPackages.some((pkg) => pkg.name === entry.name),
     );
 
-    const action = guard(
+    const action = orBack(
       await p.select({
         message: `Custom packages (${selection.customPackages.length} added)`,
         options: [
@@ -42,10 +42,10 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
       }),
     );
 
-    if (action === "return") return;
+    if (action === null || action === "return") return;
 
     if (action === "saved") {
-      const chosen = guard(
+      const chosen = orBack(
         await p.multiselect({
           message: "Select saved packages to add (space to toggle, enter to confirm)",
           required: false,
@@ -56,6 +56,7 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
           })),
         }),
       );
+      if (chosen === null) continue;
       for (const name of chosen) {
         const entry = savedSelectable.find((pkg) => pkg.name === name);
         if (entry) {
@@ -67,7 +68,7 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
     }
 
     if (action === "manage") {
-      const chosen = guard(
+      const chosen = orBack(
         await p.multiselect({
           message: "Delete which saved packages? (no project is changed)",
           required: false,
@@ -78,13 +79,14 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
           })),
         }),
       );
+      if (chosen === null) continue;
       for (const name of chosen) await forgetCustomPackage(name);
       if (chosen.length > 0) p.log.success(`Deleted ${chosen.length} saved package(s).`);
       continue;
     }
 
     if (action === "remove") {
-      const name = guard(
+      const name = orBack(
         await p.select({
           message: "Remove which package?",
           options: selection.customPackages.map((pkg) => ({
@@ -94,13 +96,14 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
           })),
         }),
       );
+      if (name === null) continue;
       selection.customPackages = selection.customPackages.filter((pkg) => pkg.name !== name);
       continue;
     }
 
-    const input = guard(
+    const input = orBack(
       await p.text({
-        message: "Enter an npm package (name or name@version)",
+        message: "Enter an npm package (name or name@version, Esc to go back)",
         placeholder: "sonner@latest",
         validate(value) {
           const result = parsePackageSpecifier(value ?? "");
@@ -108,6 +111,7 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
         },
       }),
     );
+    if (input === null) continue;
     const parsed = parsePackageSpecifier(input);
     if (!parsed.ok) continue;
 
@@ -116,7 +120,7 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
       continue;
     }
 
-    const dependencyType = guard(
+    const dependencyType = orBack(
       await p.select({
         message: "Add package as",
         options: [
@@ -124,7 +128,8 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
           { value: "devDependency", label: "devDependency" },
         ],
       }),
-    ) as "dependency" | "devDependency";
+    ) as "dependency" | "devDependency" | null;
+    if (dependencyType === null) continue;
 
     p.note(
       "StackPack does not have a verified automatic recipe for this package.\nIt will be installed only. No configuration files will be generated.",

@@ -75,11 +75,38 @@ export async function runPresetsBrowser(options: { cwd?: string } = {}): Promise
             label: preset.name,
             hint: `${preset.scope} — ${preset.filePath}`,
           })),
+          { value: "__delete__", label: "Delete a preset" },
           { value: "__back__", label: "Back to main menu" },
         ],
       }),
     );
     if (choice === "__back__") return;
+    if (choice === "__delete__") {
+      const target = guard(
+        await p.select({
+          message: "Which preset do you want to delete?",
+          options: [
+            ...presets.map((preset, index) => ({
+              value: String(index),
+              label: preset.name,
+              hint: `${preset.scope} — ${preset.filePath}`,
+            })),
+            { value: "__cancel__", label: "Cancel" },
+          ],
+        }),
+      );
+      if (target === "__cancel__") continue;
+      const preset = presets[Number(target)];
+      if (!preset) continue;
+      const confirmed = guard(
+        await p.confirm({ message: `Delete preset "${preset.name}"?`, initialValue: false }),
+      );
+      if (confirmed) {
+        const location = await deletePreset(preset.name, { projectRoot });
+        p.log.success(`Deleted ${location.scope} preset: ${location.filePath}`);
+      }
+      continue;
+    }
     const selected = presets[Number(choice)];
     if (!selected) continue;
 
