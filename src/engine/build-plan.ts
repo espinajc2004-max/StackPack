@@ -4,6 +4,7 @@ import type {
   IntegrationPlan,
   IntegrationRecipe,
   PlannedFile,
+  PlannedJsonEdit,
   PlannedScript,
 } from "../integrations/types.js";
 import { resolveExecutionOrder } from "./resolve-order.js";
@@ -33,6 +34,7 @@ export type InstallationPlan = {
   devDependencies: ResolvedPackage[];
   conflicts: DependencyConflict[];
   filesToCreate: PlannedFile[];
+  jsonEdits: PlannedJsonEdit[];
   /** Files StackPack itself plans to modify (not counting official tools). */
   filesToModify: string[];
   scripts: PlannedScript[];
@@ -84,6 +86,7 @@ export function buildInstallationPlan(
   });
 
   const filesToCreate = integrations.flatMap(({ plan }) => plan.filesToCreate);
+  const jsonEdits = integrations.flatMap(({ plan }) => plan.jsonEdits ?? []);
   const scripts = integrations.flatMap(({ plan }) => plan.scripts);
   const initializers = integrations.flatMap(({ recipe, plan }) =>
     plan.initializer ? [{ id: recipe.id, name: recipe.name, initializer: plan.initializer }] : [],
@@ -93,6 +96,7 @@ export function buildInstallationPlan(
   if (resolution.packages.length > 0 || scripts.length > 0) {
     filesToModify.push("package.json");
   }
+  filesToModify.push(...jsonEdits.map((edit) => edit.path));
 
   const warnings = [...resolution.warnings];
   if (initializers.length > 0) {
@@ -106,6 +110,7 @@ export function buildInstallationPlan(
     devDependencies: resolution.packages.filter((p) => p.dependencyType === "devDependency"),
     conflicts: resolution.conflicts,
     filesToCreate,
+    jsonEdits,
     filesToModify,
     scripts,
     scriptConflicts: findScriptConflicts(context.packageJson.scripts, {

@@ -52,11 +52,27 @@ async function resolveFileConflicts(
   const resolutions: Record<string, FileConflictResolution> = {};
   for (const filePath of plan.existingFileConflicts) {
     const planned = plan.filesToCreate.find((file) => file.path === filePath);
+    const required = planned?.requiredReason;
     for (;;) {
-      const choice = guard(
-        await p.select({
-          message: `${filePath} already exists`,
-          options: [
+      // Required replacements list "Replace after backup" first so the
+      // default choice cannot silently break the integration.
+      const options = required
+        ? [
+            { value: "replace", label: "Replace after backup (recommended)", hint: required },
+            { value: "show", label: "Show proposed contents" },
+            {
+              value: "rename",
+              label: "Create with another name",
+              hint: "adds a .stackpack suffix",
+            },
+            {
+              value: "keep",
+              label: "Keep existing file",
+              hint: "warning: the integration will not work",
+            },
+            { value: "cancel", label: "Cancel installation" },
+          ]
+        : [
             { value: "keep", label: "Keep existing file", hint: "planned file is skipped" },
             { value: "show", label: "Show proposed contents" },
             {
@@ -66,9 +82,8 @@ async function resolveFileConflicts(
             },
             { value: "replace", label: "Replace after backup" },
             { value: "cancel", label: "Cancel installation" },
-          ],
-        }),
-      );
+          ];
+      const choice = guard(await p.select({ message: `${filePath} already exists`, options }));
       if (choice === "show") {
         p.note(planned?.contents ?? "(unknown contents)", filePath);
         continue;
