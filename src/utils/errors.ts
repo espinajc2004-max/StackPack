@@ -1,23 +1,21 @@
-export const SYM = {
-  ok: "✓",
-  warn: "⚠",
-  err: "✗",
-} as const;
-
 export class StackPackError extends Error {
-  constructor(
-    message: string,
-    public hint?: string
-  ) {
-    super(message);
+  readonly hints: string[];
+
+  constructor(message: string, options?: { hints?: string[]; cause?: unknown }) {
+    super(message, { cause: options?.cause });
     this.name = "StackPackError";
+    this.hints = options?.hints ?? [];
   }
 }
 
-export function renderError(err: unknown): string {
-  if (err instanceof StackPackError) {
-    return `${SYM.err} ${err.message}${err.hint ? `\n\n${err.hint}` : ""}`;
+export class CancelledError extends Error {
+  constructor(message = "Operation cancelled.") {
+    super(message);
+    this.name = "CancelledError";
   }
-  if (err instanceof Error) return `${SYM.err} ${err.message}`;
-  return `${SYM.err} ${String(err)}`;
+}
+
+export function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  return String(error);
 }

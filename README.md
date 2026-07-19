@@ -1,60 +1,111 @@
 # StackPack
 
-Build your stack once. Reuse it anywhere.
+A local-first, privacy-focused, terminal-based integration builder for JavaScript and TypeScript projects.
 
-StackPack is a local-first, privacy-focused CLI for creating, saving, managing, and installing reusable JavaScript/TypeScript development stacks. It is not a package manager — it is an interactive **Stack Recipe Engine** that knows which packages belong together, which questions to ask, which config files to generate, and which scripts to add.
+StackPack creates projects with the **official** tools (`create-vite`, `create-next-app`), then opens a category-based integration dashboard where you pick routing, state management, data fetching, forms, testing, and custom packages. Everything is reviewed as one installation plan before a single package is installed.
 
-Everything stays on your machine: no account, no cloud, no telemetry. The only network requests are npm registry checks and package installation.
-
-## Usage
-
-```bash
-stackpack                    # interactive main menu
-stackpack create             # build a preset interactively (--local for project-scoped)
-stackpack install <preset>            # existing project → installs here; otherwise asks a project name
-stackpack install <preset> my-app     # create ./my-app and install into it
-stackpack install <preset> --dry-run --package-manager pnpm --yes
-stackpack list               # list saved presets
-stackpack show <preset>      # full preset details
-stackpack edit <preset>      # edit a saved preset
-stackpack duplicate <preset> # copy under a new name
-stackpack delete <preset>    # delete (a backup copy is kept)
-stackpack export <preset>    # write <name>.stackpack.json for sharing
-stackpack import <file>      # import a shared preset
-stackpack scan               # detect this project's stack, save it as a preset
-stackpack doctor             # health-check your setup and presets
+```text
+Run StackPack
+→ Choose project type and language
+→ Official creator runs
+→ StackPack inspects what was actually generated
+→ Jump between integration categories
+→ Review the full plan
+→ Install with official methods
+→ Verify
+→ Optionally save the setup as a local preset
 ```
 
-## How it works
+## Official-first installation policy
 
-**Recipes, not hardcoded stacks.** Each framework or tool is a declarative recipe (`src/recipes/`) with conditional rules — one Express recipe produces both the JavaScript and TypeScript variants, one React recipe handles Vite, React Compiler, and language differences. The engine (`src/engine/resolve.ts`) turns recipes + your answers into an installation plan: dependencies, devDependencies, generated files, and scripts. Adding a new tool means adding a recipe and a menu option, not touching the engine.
+Every integration uses the most official installation method available, in this priority order:
 
-**Create flow** asks, in order: language → **frontend** (React, Vue, Next.js) → **backend** (Express, NestJS, Fastify, Hono) → **ORM** (Drizzle, Prisma) → framework-specific questions (build tool, React Compiler, database driver…) → feature choices scoped to what you picked (routing, state, data fetching, forms, validation, testing) → curated extras → custom npm packages (verified against the registry, latest by default) → optional version pinning → review screen → save. Picking both a frontend and a backend produces a fullstack preset.
+1. **Official project creator** — e.g. `create-vite`, `create-next-app`. StackPack never recreates official templates by hand.
+2. **Official initializer CLI** — e.g. Playwright's `npm init playwright@latest`, which runs interactively and controls its own setup. StackPack rescans the project afterwards.
+3. **Official documented package installation** — e.g. Zustand, Redux Toolkit (`@reduxjs/toolkit` + `react-redux`), TanStack Query, React Hook Form with Zod (`react-hook-form` + `zod` + `@hookform/resolvers`).
+4. **Package-only installation** — for custom packages without a verified recipe. StackPack tells you clearly that no automatic configuration will happen; it never invents configuration from a package name.
 
-**Install flow**: if the current directory already has a `package.json`, StackPack installs into it; otherwise it asks for a project name and creates the folder + `package.json` for you. A full final review (every package, file, and script) is shown before anything is installed. It detects the package manager (packageManager field, then lockfiles — with a prompt when lockfiles conflict), previews the exact commands on request, never overwrites existing files or scripts without asking, and reports exactly what it did.
+## Supported base creators
 
-## Storage
+- React with Vite (official `create-vite`)
+- Next.js (official `create-next-app`)
 
-- Global presets: `~/.stackpack/presets/` (`%USERPROFILE%\.stackpack\presets` on Windows)
-- Project-local presets: `./.stackpack/` — commit these to share with your team
-- Deleted presets are backed up to `~/.stackpack/backups/` first
-- Registry lookups are cached in `~/.stackpack/cache/`
-- Override the root with the `STACKPACK_HOME` environment variable
+Existing React + Vite and Next.js projects are detected too (`stackpack add`, `stackpack scan`).
 
-Presets are plain declarative JSON, validated with Zod on every load and import. File paths inside presets must be relative and may not traverse outside the project; imported presets can never execute code.
+## Curated integrations
+
+| Category             | Integration                            | Method            |
+| -------------------- | -------------------------------------- | ----------------- |
+| Routing              | React Router (React + Vite only)       | package install   |
+| State Management     | Zustand                                | package install   |
+| State Management     | Redux Toolkit (+ optional store files) | package install   |
+| Data Fetching        | TanStack Query (+ optional Devtools)   | package install   |
+| Forms and Validation | React Hook Form with Zod               | package install   |
+| Testing              | Vitest with React Testing Library      | packages + config |
+| Testing              | Playwright                             | official init CLI |
+
+Plus custom npm packages (installed only, never auto-configured).
+
+Framework-specific filtering applies automatically — e.g. React Router is hidden on Next.js projects because Next.js provides routing.
+
+## Commands
+
+```bash
+stackpack                          # interactive main menu
+stackpack new <project-name>       # create a project with an official creator
+stackpack new my-app --preset jc-react-stack
+stackpack add                      # add integrations to the current project
+stackpack add --dry-run            # full plan, zero changes
+stackpack add --package-manager pnpm
+stackpack scan                     # detect stack + installed integrations
+stackpack save <name> [--local|--global]
+stackpack apply <name> [--dry-run] # apply a preset to the current project
+stackpack presets list
+stackpack presets show <name>
+stackpack presets delete <name>
+stackpack --no-color
+```
+
+## The dashboard
+
+After the base project exists, StackPack does not walk you through a fixed wizard. It opens a jumpable dashboard: enter any category, select or remove an integration, come back later, edit versions, and review only when you are ready. Selections persist in memory until you install or cancel.
+
+## Privacy model
+
+StackPack requires **no sign-up, no login, no server, no telemetry**. Presets are plain JSON stored on your device:
+
+- Global: `~/.stackpack/presets/<name>.json`
+- Project-local (committable): `<project>/.stackpack/<name>.json`
+
+Presets never contain shell commands, executable code, absolute paths, credentials, or `.env` values — the schema rejects anything unexpected. Internet access is only needed to run official creators/initializers and install packages.
+
+## Safety
+
+- Nothing is installed before you confirm the reviewed plan.
+- Backups of files StackPack will modify go to `<project>/.stackpack/backups/<operation-id>/` before any change.
+- Existing files and `package.json` scripts are never silently overwritten — you choose keep/replace/rename per conflict.
+- `package.json` edits use structured JSONC editing, not string replacement.
+- All generated paths are checked to stay inside the project root.
+- Commands run without a shell; executable and arguments are always passed separately.
+- Uncommitted Git changes trigger a warning first (Git itself is optional).
+
+## Limitations
+
+- Curated recipes cover React + Vite and Next.js only.
+- StackPack cannot predict every file an official initializer creates; the review says so explicitly and the project is rescanned afterwards.
+- Rollback is best effort: backed-up files can be restored, but package-manager changes are not automatically reversed.
+- No ORM/auth integrations, no monorepo automation, no cloud sync, no marketplace (by design, for now).
 
 ## Development
 
 ```bash
 npm install
-npm run dev -- <command>   # run from source (tsx)
-npm run build              # compile to dist/
-npm test                   # vitest (70 tests)
+npm run dev          # run the CLI from source
+npm run check        # typecheck + lint + format check + tests + build
 ```
 
-## Roadmap
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution process.
 
-- Config-file merging for existing projects (currently: ask before replacing)
-- More recipes (Svelte, Tailwind config, ESLint everywhere)
-- `stackpack scan` → "add missing tools" flow
-- Community recipe sharing
+## License
+
+[MIT](LICENSE)
