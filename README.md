@@ -28,6 +28,28 @@ stackpack
 
 Open a terminal in any folder, type `stackpack`, and the interactive menu takes it from there — create a project, pick integrations, review the plan, install.
 
+## Uninstall
+
+If you installed StackPack globally and no longer want it:
+
+```bash
+npm uninstall -g stackpack-cli
+```
+
+That removes the `stackpack` command from your system. (If you only ever used `npx stackpack-cli`, there is nothing to uninstall — npx leaves nothing installed.)
+
+StackPack also keeps your saved presets in a small local folder. If you want a complete cleanup, delete it too:
+
+```bash
+# Windows
+rmdir /s /q "%USERPROFILE%\.stackpack"
+
+# macOS / Linux
+rm -rf ~/.stackpack
+```
+
+Projects you created with StackPack are never touched by uninstalling — they are normal projects that belong entirely to you.
+
 ## How it works
 
 StackPack creates projects with the **official** tools (`create-vite`, `create-next-app`), then opens a category-based integration dashboard where you pick routing, state management, data fetching, forms, UI components, ORMs, testing, and custom packages. Everything is reviewed as one installation plan before a single package is installed.

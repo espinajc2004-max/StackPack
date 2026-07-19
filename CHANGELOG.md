@@ -4,6 +4,12 @@ All notable changes to StackPack are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.1] - 2026-07-20
+
+### Added
+
+- Uninstall section in the README: how to remove the global command, clean up the `~/.stackpack` presets folder, and a note that created projects are never affected.
+
 ## [0.3.0] - 2026-07-19
 
 Complete rewrite around the official-first integration builder design.
