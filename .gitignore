@@ -5,8 +5,14 @@ coverage/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 
 .DS_Store
 .idea/
 .vscode/*
+.claude/
 *.tgz
+
+.env
+.env.*
+!.env.example
