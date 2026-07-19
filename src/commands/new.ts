@@ -160,29 +160,44 @@ export async function runNew(
         ) as CreatorAdapter["id"],
       );
 
-  const language =
-    preset?.base.language ??
-    (guard(
-      await p.select({
-        message: "Choose a language",
-        options: [
-          { value: "typescript", label: "TypeScript" },
-          { value: "javascript", label: "JavaScript" },
-        ],
-      }),
-    ) as "typescript" | "javascript");
-
   const config = await loadConfig();
   const packageManager: PackageManager =
     options.packageManager ?? config.defaultPackageManager ?? "npm";
-  const creatorOptions: CreatorOptions = { language };
 
+  // Presets stay reproducible, so creator questions only run for fresh
+  // interactive setups. Adapters own the language question because some
+  // official creators ask it in their own prompts instead.
+  let creatorOptions: CreatorOptions;
+  if (preset) {
+    creatorOptions = { language: preset.base.language };
+  } else if (creator.collectOptions) {
+    creatorOptions = await creator.collectOptions();
+  } else {
+    creatorOptions = {
+      language: guard(
+        await p.select({
+          message: "Choose a language",
+          options: [
+            { value: "typescript", label: "TypeScript" },
+            { value: "javascript", label: "JavaScript" },
+          ],
+        }),
+      ) as "typescript" | "javascript",
+    };
+  }
+
+  const languageLabel =
+    creatorOptions.language === undefined
+      ? `You choose in ${creator.officialTool}'s prompts`
+      : creatorOptions.language === "typescript"
+        ? "TypeScript"
+        : "JavaScript";
   p.note(
     [
       `Project\n  ${name}`,
       `Official creator\n  ${creator.officialTool}`,
       `Framework\n  ${creator.frameworkLabel}`,
-      `Language\n  ${language === "typescript" ? "TypeScript" : "JavaScript"}`,
+      `Language\n  ${languageLabel}`,
       `Template\n  ${creator.templateLabel(creatorOptions)}`,
       `Package manager\n  ${packageManager}`,
     ].join("\n\n"),
@@ -198,6 +213,14 @@ export async function runNew(
   // Never trust the original selections; inspect what was actually generated.
   const context = await detectProject(destination, { packageManagerOverride: packageManager });
   p.note(describeContext(context), "Generated project detected");
+
+  if (context.detection === "unsupported") {
+    p.log.warn(
+      "StackPack integrations currently support React (Vite) and Next.js projects, so the integration dashboard is not available for this framework yet.",
+    );
+    p.outro(`Base project created at ${destination}`);
+    return;
+  }
 
   const selection: SetupSelection = preset ? presetToSelection(preset) : createEmptySelection();
   const outcome = await dashboardInstallLoop({

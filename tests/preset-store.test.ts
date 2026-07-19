@@ -24,7 +24,7 @@ function samplePreset(name = "jc-react-stack"): Preset {
     scope: "global",
     createdAt: now,
     updatedAt: now,
-    base: { creator: "vite-react", language: "typescript", creatorOptions: {} },
+    base: { creator: "vite", language: "typescript", creatorOptions: {} },
     project: { framework: "react", buildTool: "vite", language: "typescript" },
     integrations: [
       { id: "react-router", recipeVersion: 1, options: {} },

@@ -23,7 +23,10 @@ export const presetSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   base: z.object({
-    creator: z.enum(["vite-react", "next"]),
+    // "vite-react" is the pre-rename id; normalize it so old presets load.
+    creator: z
+      .enum(["vite", "next", "vite-react"])
+      .transform((value) => (value === "vite-react" ? ("vite" as const) : value)),
     language: z.enum(["typescript", "javascript"]),
     creatorOptions: z.record(z.string(), z.unknown()).default({}),
   }),

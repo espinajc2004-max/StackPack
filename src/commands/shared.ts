@@ -287,7 +287,7 @@ export function buildPresetFromSelection(params: {
     createdAt: now,
     updatedAt: now,
     base: {
-      creator: context.framework === "next" ? "next" : "vite-react",
+      creator: context.framework === "next" ? "next" : "vite",
       language: context.language,
       creatorOptions: {},
     },
