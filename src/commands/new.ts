@@ -11,6 +11,7 @@ import { presetToSelection } from "./selection-utils.js";
 import { loadPreset } from "../storage/preset-store.js";
 import { loadConfig } from "../storage/config-store.js";
 import { realCommandRunner } from "../package-manager/execute.js";
+import { baseInstallCommand } from "../package-manager/commands.js";
 import { formatCommand, type PackageManager } from "../package-manager/types.js";
 import { validateProjectName } from "../utils/names.js";
 import { CancelledError, StackPackError } from "../utils/errors.js";
@@ -114,6 +115,30 @@ async function runOfficialCreator(
   }
 }
 
+/**
+ * Creators run with installs skipped so all dependencies land in a single
+ * install at the end. Installing integrations covers the base dependencies
+ * too; this handles every path where that install did not happen.
+ */
+async function ensureDependenciesInstalled(
+  destination: string,
+  packageManager: PackageManager,
+): Promise<void> {
+  try {
+    await fs.access(path.join(destination, "node_modules"));
+    return;
+  } catch {
+    // node_modules is missing; run the one combined install now.
+  }
+  p.log.step(`Installing project dependencies: ${packageManager} install`);
+  const result = await realCommandRunner(baseInstallCommand(packageManager, destination));
+  if (result.exitCode !== 0) {
+    p.log.warn(
+      `Dependency installation failed (exit code ${result.exitCode}). Run "${packageManager} install" inside the project to finish setup.`,
+    );
+  }
+}
+
 export async function runNew(
   projectNameArg: string | undefined,
   options: { preset?: string; packageManager?: PackageManager },
@@ -209,6 +234,9 @@ export async function runNew(
   if (!create) throw new CancelledError();
 
   await runOfficialCreator(creator, name, creatorOptions, packageManager);
+  p.log.info(
+    "Dependency installation is deferred: everything installs in one step after you pick integrations.",
+  );
 
   // Never trust the original selections; inspect what was actually generated.
   const context = await detectProject(destination, { packageManagerOverride: packageManager });
@@ -218,6 +246,7 @@ export async function runNew(
     p.log.warn(
       "StackPack integrations currently support React (Vite) and Next.js projects, so the integration dashboard is not available for this framework yet.",
     );
+    await ensureDependenciesInstalled(destination, packageManager);
     p.outro(`Base project created at ${destination}`);
     return;
   }
@@ -231,8 +260,10 @@ export async function runNew(
   });
 
   if (outcome === "cancelled") {
+    await ensureDependenciesInstalled(destination, packageManager);
     p.outro(`Base project created at ${destination}. No integrations were installed.`);
     return;
   }
+  await ensureDependenciesInstalled(destination, packageManager);
   p.outro(`Project ready at ${destination}`);
 }

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "my-react-tech-stack",
+  "displayName": "my-react-tech-stack",
+  "scope": "local",
+  "createdAt": "2026-07-19T12:05:37.445Z",
+  "updatedAt": "2026-07-19T12:05:37.445Z",
+  "base": {
+    "creator": "vite",
+    "language": "typescript",
+    "creatorOptions": {}
+  },
+  "project": {
+    "framework": "react",
+    "buildTool": "vite",
+    "language": "typescript"
+  },
+  "integrations": [
+    {
+      "id": "react-router",
+      "recipeVersion": 1,
+      "options": {}
+    },
+    {
+      "id": "zustand",
+      "recipeVersion": 1,
+      "options": {}
+    },
+    {
+      "id": "tanstack-query",
+      "recipeVersion": 1,
+      "options": {
+        "devtools": true,
+        "configureProvider": true
+      }
+    }
+  ],
+  "customPackages": {
+    "dependencies": {},
+    "devDependencies": {}
+  },
+  "versionOverrides": {}
+}

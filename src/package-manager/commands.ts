@@ -6,6 +6,11 @@ function toSpecifiers(packages: PackageToInstall[]): string[] {
   return packages.map((pkg) => `${pkg.name}@${pkg.version}`);
 }
 
+/** Builds the plain "install everything in package.json" command. */
+export function baseInstallCommand(packageManager: PackageManager, cwd: string): CommandDefinition {
+  return { command: packageManager, args: ["install"], cwd, interactive: true };
+}
+
 /** Builds the official install command for the detected package manager. */
 export function packageInstallCommand(
   packageManager: PackageManager,
