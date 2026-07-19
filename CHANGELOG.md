@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `stackpack new` now warns and asks for confirmation when run inside an existing project (a folder that already has a `package.json`), so nested projects are never created by accident.
 - Update notice in the interactive menu: an anonymous, once-per-day registry check shows when a newer version exists (never auto-updates, fails silently offline, opt out with `STACKPACK_NO_UPDATE_CHECK`).
+- Dashboard project inventory: category rows now show what the project already has installed (name, version, partial-setup warning), separate from this session's picks.
+- `stackpack install <preset> [project-name]` (alias `i`): express mode — create a project from a saved preset in one shot, with the review screen as the single decision point.
+- `stackpack presets edit <name>` and an "Edit this preset" option in the presets browser: change a preset's integrations in the dashboard and save back to the same file, without creating or touching any project.
+- Tests covering paths with spaces and unicode characters (project detection, preset store, backups, path-traversal guards).
 
 ### Changed
 

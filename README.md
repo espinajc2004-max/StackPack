@@ -112,6 +112,8 @@ Framework-specific filtering applies automatically — e.g. React Router is hidd
 stackpack                          # interactive main menu
 stackpack new <project-name>       # create a project with an official creator
 stackpack new my-app --preset jc-react-stack
+stackpack install <preset> [name]  # express mode: whole stack in one shot
+stackpack i <preset> [name]        # same, shorter
 stackpack add                      # add integrations to the current project
 stackpack add --dry-run            # full plan, zero changes
 stackpack add --package-manager pnpm
@@ -120,6 +122,7 @@ stackpack save <name> [--local|--global]
 stackpack apply <name> [--dry-run] # apply a preset to the current project
 stackpack presets list
 stackpack presets show <name>
+stackpack presets edit <name>      # swap integrations, save back — no project touched
 stackpack presets delete <name>
 stackpack --no-color
 ```

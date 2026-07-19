@@ -181,6 +181,63 @@ async function ensureDependenciesInstalled(
   }
 }
 
+/**
+ * Express install: create a project from a saved preset in one shot, like the
+ * official create-* tools but with the whole stack. Skips the intermediate
+ * confirmations of runNew; the review screen is the single decision point.
+ */
+export async function runExpressInstall(
+  presetName: string,
+  projectNameArg: string | undefined,
+  options: { packageManager?: PackageManager } = {},
+): Promise<void> {
+  p.intro("StackPack — express install");
+  const { preset, location } = await loadPreset(presetName, { projectRoot: process.cwd() });
+  p.log.info(
+    `Preset: ${preset.displayName ?? preset.name} ${pc.dim(`(${location.scope} — ${preset.integrations.length} integrations)`)}`,
+  );
+
+  if (!(await confirmIfInsideExistingProject())) {
+    throw new CancelledError();
+  }
+
+  const { name, destination } = await askProjectName(projectNameArg);
+  const creator = getCreator(preset.base.creator);
+  const config = await loadConfig();
+  const packageManager: PackageManager =
+    options.packageManager ?? config.defaultPackageManager ?? "npm";
+
+  await runOfficialCreator(creator, name, { language: preset.base.language }, packageManager);
+  const context = await detectProject(destination, { packageManagerOverride: packageManager });
+
+  if (context.detection === "unsupported") {
+    p.log.warn(
+      "The generated project is not a supported React or Next.js project, so the preset's integrations cannot be applied.",
+    );
+    await ensureDependenciesInstalled(destination, packageManager);
+    p.outro(`Base project created at ${destination}. No integrations were installed.`);
+    return;
+  }
+
+  const selection = presetToSelection(preset);
+  const outcome = await dashboardInstallLoop({
+    context,
+    selection,
+    dryRun: false,
+    startAtReview: true,
+    sourcePreset: preset,
+  });
+
+  if (outcome === "cancelled") {
+    await ensureDependenciesInstalled(destination, packageManager);
+    p.outro(`Base project created at ${destination}. No integrations were installed.`);
+    return;
+  }
+  await ensureDependenciesInstalled(destination, packageManager);
+  p.note(`cd ${name}\n${packageManager} run dev`, "Next steps");
+  p.outro(`Project ready at ${destination} — good to go!`);
+}
+
 export async function runNew(
   projectNameArg: string | undefined,
   options: { preset?: string; packageManager?: PackageManager },

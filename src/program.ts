@@ -2,7 +2,7 @@ import { Command, Option } from "commander";
 import pc from "picocolors";
 import { p } from "./ui/prompts.js";
 import { printError } from "./ui/errors.js";
-import { runNew } from "./commands/new.js";
+import { runExpressInstall, runNew } from "./commands/new.js";
 import { runAdd } from "./commands/add.js";
 import { runScan } from "./commands/scan.js";
 import { runSave, runSaveInteractive } from "./commands/save.js";
@@ -10,6 +10,7 @@ import { runApply } from "./commands/apply.js";
 import {
   runPresetsBrowser,
   runPresetsDelete,
+  runPresetsEdit,
   runPresetsList,
   runPresetsShow,
 } from "./commands/presets.js";
@@ -143,6 +144,23 @@ export async function runCli(argv: string[]): Promise<void> {
       await runApply(name, options);
     });
 
+  program
+    .command("install")
+    .alias("i")
+    .description("Create a project from a saved preset in one shot (express mode)")
+    .argument("<preset-name>", "saved preset to install from")
+    .argument("[project-name]", "project folder to create (asked interactively if omitted)")
+    .addOption(packageManagerOption)
+    .action(
+      async (
+        presetName: string,
+        projectName: string | undefined,
+        options: { packageManager?: PackageManager },
+      ) => {
+        await runExpressInstall(presetName, projectName, options);
+      },
+    );
+
   const presets = program.command("presets").description("Manage saved presets");
   presets
     .command("list")
@@ -156,6 +174,13 @@ export async function runCli(argv: string[]): Promise<void> {
     .argument("<preset-name>")
     .action(async (name: string) => {
       await runPresetsShow(name);
+    });
+  presets
+    .command("edit")
+    .description("Edit a saved preset's integrations (no project is touched)")
+    .argument("<preset-name>")
+    .action(async (name: string) => {
+      await runPresetsEdit(name);
     });
   presets
     .command("delete")

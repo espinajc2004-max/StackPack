@@ -33,15 +33,59 @@ function testingLabel(selection: SetupSelection): string | undefined {
   return selection.testing.map((entry) => getRecipe(entry.id)?.name ?? entry.id).join(" + ");
 }
 
-/** Category rows turn green with a check once something is selected. */
+export type InstalledSummary = { label: string; partial: boolean };
+
+/**
+ * Project inventory per category: what is already installed in the project
+ * (detected from real files/packages), independent of this session's picks.
+ */
+export function installedSummary(
+  availabilities: IntegrationAvailability[],
+  category: string,
+): InstalledSummary | undefined {
+  const entries = availabilities.filter(
+    (a) =>
+      a.recipe.category === category &&
+      (a.compatibility === "already-installed" || a.compatibility === "partially-configured"),
+  );
+  if (entries.length === 0) return undefined;
+  const label = entries
+    .map((a) => {
+      const version = a.detection.installedVersion;
+      const base = version ? `${a.recipe.name} ${version}` : a.recipe.name;
+      return a.compatibility === "partially-configured" ? `${base} — partial setup` : base;
+    })
+    .join(" + ");
+  return { label, partial: entries.some((a) => a.compatibility === "partially-configured") };
+}
+
+/**
+ * Category rows show this session's picks first (green check), otherwise what
+ * the project already has installed, otherwise that the slot is open.
+ */
 function categoryOption(
   value: string,
   label: string,
   selected: string | undefined,
+  installed?: InstalledSummary,
 ): { value: string; label: string; hint: string } {
-  return selected
-    ? { value, label: `${label} ${pc.green("✓")}`, hint: pc.green(selected) }
-    : { value, label, hint: "Not selected" };
+  if (selected) {
+    return { value, label: `${label} ${pc.green("✓")}`, hint: pc.green(selected) };
+  }
+  if (installed) {
+    return installed.partial
+      ? {
+          value,
+          label: `${label} ${pc.yellow("⚠")}`,
+          hint: pc.yellow(`installed: ${installed.label}`),
+        }
+      : {
+          value,
+          label: `${label} ${pc.green("●")}`,
+          hint: pc.dim(`installed: ${installed.label}`),
+        };
+  }
+  return { value, label, hint: "Not installed" };
 }
 
 function categoryHasVisibleRecipes(
@@ -62,7 +106,9 @@ export type DashboardOutcome = "review" | "cancelled";
 export async function runDashboard(
   context: ProjectContext,
   selection: SetupSelection,
+  options: { reviewLabel?: string } = {},
 ): Promise<DashboardOutcome> {
+  const reviewLabel = options.reviewLabel ?? "Review and Install";
   for (;;) {
     const availabilities = filterIntegrations(context, allRecipes);
     const count = selectedIntegrationCount(selection);
@@ -77,34 +123,59 @@ export async function runDashboard(
 
     const options: Array<{ value: string; label: string; hint?: string }> = [];
     if (categoryHasVisibleRecipes(availabilities, "routing")) {
-      options.push(categoryOption("routing", "Routing", selectionLabel(selection.routing)));
+      options.push(
+        categoryOption(
+          "routing",
+          "Routing",
+          selectionLabel(selection.routing),
+          installedSummary(availabilities, "routing"),
+        ),
+      );
     }
     options.push(
       categoryOption(
         "state-management",
         "State Management",
         selectionLabel(selection.stateManagement),
+        installedSummary(availabilities, "state-management"),
       ),
       categoryOption(
         "data-fetching",
         "Data Fetching and API",
         selectionLabel(selection.dataFetching),
+        installedSummary(availabilities, "data-fetching"),
       ),
       categoryOption(
         "forms-validation",
         "Forms and Validation",
         selectionLabel(selection.formsAndValidation),
+        installedSummary(availabilities, "forms-validation"),
       ),
-      categoryOption("ui", "UI Components", selectionLabel(selection.ui)),
-      categoryOption("orm", "Database / ORM", selectionLabel(selection.orm)),
-      categoryOption("testing", "Testing", testingLabel(selection)),
+      categoryOption(
+        "ui",
+        "UI Components",
+        selectionLabel(selection.ui),
+        installedSummary(availabilities, "ui"),
+      ),
+      categoryOption(
+        "orm",
+        "Database / ORM",
+        selectionLabel(selection.orm),
+        installedSummary(availabilities, "orm"),
+      ),
+      categoryOption(
+        "testing",
+        "Testing",
+        testingLabel(selection),
+        installedSummary(availabilities, "testing"),
+      ),
       categoryOption(
         "custom-packages",
         "Custom Packages",
         customCount > 0 ? `${customCount} package${customCount === 1 ? "" : "s"}` : undefined,
       ),
       { value: "versions", label: "Edit Package Versions" },
-      { value: "review", label: "Review and Install" },
+      { value: "review", label: reviewLabel },
     );
 
     const choice = guard(await p.select({ message: "Choose a category", options }));

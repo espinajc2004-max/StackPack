@@ -1,6 +1,11 @@
 import pc from "picocolors";
 import { guard, p } from "../ui/prompts.js";
-import { deletePreset, listPresets, loadPreset } from "../storage/preset-store.js";
+import { deletePreset, listPresets, loadPreset, savePreset } from "../storage/preset-store.js";
+import { presetToSelection } from "./selection-utils.js";
+import { buildPresetFromSelection, selectionMatchesPreset } from "./shared.js";
+import { runDashboard } from "../dashboard/main-dashboard.js";
+import type { Preset } from "../schemas/preset.js";
+import type { ProjectContext } from "../schemas/project-context.js";
 
 export async function runPresetsList(options: { cwd?: string } = {}): Promise<void> {
   const presets = await listPresets({ projectRoot: options.cwd ?? process.cwd() });
@@ -117,12 +122,17 @@ export async function runPresetsBrowser(options: { cwd?: string } = {}): Promise
         message: `Preset "${selected.name}"`,
         options: [
           { value: "list", label: "Back to preset list" },
+          { value: "edit", label: "Edit this preset", hint: "swap integrations, save back" },
           { value: "delete", label: "Delete this preset" },
           { value: "menu", label: "Back to main menu" },
         ],
       }),
     );
     if (action === "menu") return;
+    if (action === "edit") {
+      await runPresetsEdit(selected.name, { cwd: projectRoot });
+      continue;
+    }
     if (action === "delete") {
       const confirmed = guard(
         await p.confirm({ message: `Delete preset "${selected.name}"?`, initialValue: false }),
@@ -133,6 +143,75 @@ export async function runPresetsBrowser(options: { cwd?: string } = {}): Promise
       }
     }
   }
+}
+
+/**
+ * Editing a preset never touches a real project, so the dashboard runs
+ * against a synthetic context built from the preset's own project shape.
+ */
+function contextForPresetEditing(preset: Preset): ProjectContext {
+  return {
+    rootDirectory: process.cwd(),
+    framework: preset.project.framework,
+    buildTool: preset.project.buildTool,
+    language: preset.project.language,
+    packageManager: "npm",
+    packageManagerCandidates: [],
+    detection: "detected",
+    packageJson: {},
+    detectedFiles: [],
+    installedPackages: {},
+  };
+}
+
+/**
+ * Save-and-load editing: open a preset in the dashboard, change integrations,
+ * and write it back to the same file. No project is created or modified.
+ */
+export async function runPresetsEdit(name: string, options: { cwd?: string } = {}): Promise<void> {
+  const projectRoot = options.cwd ?? process.cwd();
+  const { preset, location } = await loadPreset(name, { projectRoot });
+
+  p.log.info(`Editing ${location.scope} preset: ${location.filePath}`);
+  p.log.message(
+    pc.dim("Changes apply to the preset file only — no project is created or modified."),
+  );
+
+  const context = contextForPresetEditing(preset);
+  const selection = presetToSelection(preset);
+  const outcome = await runDashboard(context, selection, { reviewLabel: "Finish editing" });
+  if (outcome !== "review") return;
+
+  if (selectionMatchesPreset(preset, selection)) {
+    p.log.info(`No changes made — preset "${preset.name}" is untouched.`);
+    return;
+  }
+
+  const rebuilt = buildPresetFromSelection({
+    name: preset.name,
+    scope: location.scope,
+    context,
+    selection,
+  });
+  if (!rebuilt) {
+    p.log.warn("This preset cannot be rebuilt (unknown framework or language). Nothing saved.");
+    return;
+  }
+  const updated: Preset = {
+    ...rebuilt,
+    displayName: preset.displayName ?? preset.name,
+    createdAt: preset.createdAt,
+  };
+
+  const confirmed = guard(
+    await p.confirm({ message: `Save changes to preset "${preset.name}"?`, initialValue: true }),
+  );
+  if (!confirmed) {
+    p.log.info("Changes discarded — the preset file was not modified.");
+    return;
+  }
+  const saved = await savePreset(updated, location.scope, { projectRoot });
+  p.log.success(`Preset updated: ${saved.filePath}`);
 }
 
 export async function runPresetsDelete(
