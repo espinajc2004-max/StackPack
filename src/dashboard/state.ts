@@ -21,6 +21,8 @@ export type SetupSelection = {
   stateManagement?: SelectedIntegration;
   dataFetching?: SelectedIntegration;
   formsAndValidation?: SelectedIntegration;
+  ui?: SelectedIntegration;
+  orm?: SelectedIntegration;
   testing: SelectedIntegration[];
   customPackages: CustomPackage[];
   versionOverrides: Record<string, string>;
@@ -36,6 +38,8 @@ export function selectedIntegrations(selection: SetupSelection): SelectedIntegra
     selection.stateManagement,
     selection.dataFetching,
     selection.formsAndValidation,
+    selection.ui,
+    selection.orm,
     ...selection.testing,
   ].filter((entry): entry is SelectedIntegration => entry !== undefined);
 }

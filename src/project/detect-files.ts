@@ -11,6 +11,7 @@ const MARKER_PATTERNS = [
   "vitest.config.*",
   "next.config.*",
   "playwright.config.*",
+  "components.json",
   "tsconfig.json",
   "jsconfig.json",
   "src/main.*",

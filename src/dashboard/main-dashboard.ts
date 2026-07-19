@@ -11,9 +11,11 @@ import {
 import {
   runDataFetchingCategory,
   runFormsValidationCategory,
+  runOrmCategory,
   runRoutingCategory,
   runStateManagementCategory,
   runTestingCategory,
+  runUiCategory,
 } from "./categories.js";
 import { runCustomPackagesCategory } from "./custom-packages.js";
 import { runVersionEditor } from "./version-editor.js";
@@ -93,6 +95,8 @@ export async function runDashboard(
         "Forms and Validation",
         selectionLabel(selection.formsAndValidation),
       ),
+      categoryOption("ui", "UI Components", selectionLabel(selection.ui)),
+      categoryOption("orm", "Database / ORM", selectionLabel(selection.orm)),
       categoryOption("testing", "Testing", testingLabel(selection)),
       categoryOption(
         "custom-packages",
@@ -117,6 +121,12 @@ export async function runDashboard(
         break;
       case "forms-validation":
         await runFormsValidationCategory(selection, availabilities);
+        break;
+      case "ui":
+        await runUiCategory(selection, availabilities);
+        break;
+      case "orm":
+        await runOrmCategory(selection, availabilities);
         break;
       case "testing":
         await runTestingCategory(selection, availabilities);

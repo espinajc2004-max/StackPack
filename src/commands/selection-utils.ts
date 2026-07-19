@@ -25,6 +25,12 @@ export function addToSelection(
     case "forms-validation":
       selection.formsAndValidation = entry;
       return true;
+    case "ui":
+      selection.ui = entry;
+      return true;
+    case "orm":
+      selection.orm = entry;
+      return true;
     case "testing":
       if (!selection.testing.some((existing) => existing.id === id)) {
         selection.testing.push(entry);

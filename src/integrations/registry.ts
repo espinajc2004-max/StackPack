@@ -8,6 +8,9 @@ import { tanstackQueryRecipe } from "./tanstack-query/recipe.js";
 import { reactHookFormZodRecipe } from "./react-hook-form-zod/recipe.js";
 import { vitestReactRecipe } from "./vitest-react/recipe.js";
 import { playwrightRecipe } from "./playwright/recipe.js";
+import { installOnlyRecipes } from "./install-only.js";
+import { baseUiRecipe, radixRecipe, reactAriaRecipe } from "./ui/recipes.js";
+import { shadcnRecipe } from "./shadcn/recipe.js";
 
 export const allRecipes: IntegrationRecipe[] = [
   reactRouterRecipe,
@@ -15,6 +18,11 @@ export const allRecipes: IntegrationRecipe[] = [
   reduxToolkitRecipe,
   tanstackQueryRecipe,
   reactHookFormZodRecipe,
+  ...installOnlyRecipes,
+  shadcnRecipe,
+  radixRecipe,
+  baseUiRecipe,
+  reactAriaRecipe,
   vitestReactRecipe,
   playwrightRecipe,
 ];
