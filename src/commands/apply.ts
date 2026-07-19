@@ -61,6 +61,7 @@ export async function runApply(
     selection,
     dryRun: options.dryRun === true,
     startAtReview: true,
+    sourcePreset: preset,
   });
   if (outcome === "cancelled") throw new CancelledError();
   p.outro(outcome === "dry-run" ? "Dry run finished." : `Preset "${name}" applied.`);

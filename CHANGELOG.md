@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Uninstall section in the README: how to remove the global command, clean up the `~/.stackpack` presets folder, and a note that created projects are never affected.
 - `stackpack new` now warns and asks for confirmation when run inside an existing project (a folder that already has a `package.json`), so nested projects are never created by accident.
 
+### Changed
+
+- Save-and-load presets: installing from a preset without changing anything no longer asks to save again — it finishes with "good to go". If the setup was modified after loading, the save prompt says so and pre-fills the preset name for easy updating.
+- `stackpack new` ends with a "Next steps" note (`cd <project>` + dev command).
+
 ## [0.3.0] - 2026-07-19
 
 Complete rewrite around the official-first integration builder design.

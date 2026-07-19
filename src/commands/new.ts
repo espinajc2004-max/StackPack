@@ -351,6 +351,7 @@ export async function runNew(
     selection,
     dryRun: false,
     startAtReview: preset !== undefined,
+    sourcePreset: preset,
   });
 
   if (outcome === "cancelled") {
@@ -359,5 +360,6 @@ export async function runNew(
     return;
   }
   await ensureDependenciesInstalled(destination, packageManager);
-  p.outro(`Project ready at ${destination}`);
+  p.note(`cd ${name}\n${packageManager} run dev`, "Next steps");
+  p.outro(`Project ready at ${destination} — good to go!`);
 }
