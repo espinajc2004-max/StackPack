@@ -1,9 +1,18 @@
 {
-  "name": "stackpack",
+  "name": "stackpack-cli",
   "version": "0.3.0",
   "description": "Local-first, privacy-focused terminal integration builder for JavaScript and TypeScript projects. Official tooling first, presets stay on your device.",
   "type": "module",
   "license": "MIT",
+  "author": "Jc Espina <espinajc2004@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/espinajc2004-max/StackPack.git"
+  },
+  "homepage": "https://github.com/espinajc2004-max/StackPack#readme",
+  "bugs": {
+    "url": "https://github.com/espinajc2004-max/StackPack/issues"
+  },
   "bin": {
     "stackpack": "./dist/cli.js"
   },
@@ -34,7 +43,6 @@
     "integrations",
     "local-first"
   ],
-  "private": true,
   "dependencies": {
     "@clack/prompts": "^1.7.0",
     "commander": "^15.0.0",

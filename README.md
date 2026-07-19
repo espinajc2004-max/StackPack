@@ -1,8 +1,40 @@
-# StackPack
+wa<div align="center">
 
-A local-first, privacy-focused, terminal-based integration builder for JavaScript and TypeScript projects.
+# 📦 StackPack
 
-StackPack creates projects with the **official** tools (`create-vite`, `create-next-app`), then opens a category-based integration dashboard where you pick routing, state management, data fetching, forms, testing, and custom packages. Everything is reviewed as one installation plan before a single package is installed.
+**A local-first, privacy-focused, terminal-based integration builder for JavaScript and TypeScript projects.**
+
+Official tooling first · Real-world integrations · Presets stay on your device
+
+[![CI](https://github.com/espinajc2004-max/StackPack/actions/workflows/ci.yml/badge.svg)](https://github.com/espinajc2004-max/StackPack/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/stackpack-cli.svg)](https://www.npmjs.com/package/stackpack-cli)
+[![node](https://img.shields.io/node/v/stackpack-cli.svg)](https://nodejs.org)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+</div>
+
+---
+
+## 🚀 Quick start
+
+Run it anywhere, no install needed:
+
+```bash
+npx stackpack-cli
+```
+
+Or install it once and use `stackpack` as a system-wide command:
+
+```bash
+npm install -g stackpack-cli
+stackpack
+```
+
+Open a terminal in any folder, type `stackpack`, and the interactive menu takes it from there — create a project, pick integrations, review the plan, install.
+
+## 🧭 How it works
+
+StackPack creates projects with the **official** tools (`create-vite`, `create-next-app`), then opens a category-based integration dashboard where you pick routing, state management, data fetching, forms, UI components, ORMs, testing, and custom packages. Everything is reviewed as one installation plan before a single package is installed.
 
 ```text
 Run StackPack
@@ -16,7 +48,7 @@ Run StackPack
 → Optionally save the setup as a local preset
 ```
 
-## Official-first installation policy
+## 🥇 Official-first installation policy
 
 Every integration uses the most official installation method available, in this priority order:
 
@@ -25,14 +57,14 @@ Every integration uses the most official installation method available, in this 
 3. **Official documented package installation** — e.g. Zustand, Redux Toolkit (`@reduxjs/toolkit` + `react-redux`), TanStack Query, React Hook Form with Zod (`react-hook-form` + `zod` + `@hookform/resolvers`).
 4. **Package-only installation** — for custom packages without a verified recipe. StackPack tells you clearly that no automatic configuration will happen; it never invents configuration from a package name.
 
-## Supported base creators
+## 🏗️ Supported base creators
 
 - React with Vite (official `create-vite`)
 - Next.js (official `create-next-app`)
 
 Existing React + Vite and Next.js projects are detected too (`stackpack add`, `stackpack scan`).
 
-## Curated integrations
+## 🧩 Curated integrations
 
 | Category             | Integration                                       | Method            |
 | -------------------- | ------------------------------------------------- | ----------------- |
@@ -56,7 +88,7 @@ Plus custom npm packages (installed only, never auto-configured). Custom package
 
 Framework-specific filtering applies automatically — e.g. React Router is hidden on Next.js projects because Next.js provides routing.
 
-## Commands
+## ⌨️ Commands
 
 ```bash
 stackpack                          # interactive main menu
@@ -74,11 +106,11 @@ stackpack presets delete <name>
 stackpack --no-color
 ```
 
-## The dashboard
+## 🎛️ The dashboard
 
 After the base project exists, StackPack does not walk you through a fixed wizard. It opens a jumpable dashboard: enter any category, select or remove an integration, come back later, edit versions, and review only when you are ready. Selections persist in memory until you install or cancel. Pressing Esc inside a category goes back one screen without losing your selections; only Esc at the dashboard itself cancels the setup.
 
-## Privacy model
+## 🔒 Privacy model
 
 StackPack requires **no sign-up, no login, no server, no telemetry**. Presets are plain JSON stored on your device:
 
@@ -87,7 +119,7 @@ StackPack requires **no sign-up, no login, no server, no telemetry**. Presets ar
 
 Presets never contain shell commands, executable code, absolute paths, credentials, or `.env` values — the schema rejects anything unexpected. Internet access is only needed to run official creators/initializers and install packages.
 
-## Safety
+## 🛡️ Safety
 
 - Nothing is installed before you confirm the reviewed plan.
 - Backups of files StackPack will modify go to `<project>/.stackpack/backups/<operation-id>/` before any change.
@@ -97,7 +129,7 @@ Presets never contain shell commands, executable code, absolute paths, credentia
 - Commands run without a shell; executable and arguments are always passed separately.
 - Uncommitted Git changes trigger a warning first (Git itself is optional).
 
-## Limitations
+## ⚠️ Limitations
 
 - Curated recipes cover React + Vite and Next.js only.
 - StackPack cannot predict every file an official initializer creates; the review says so explicitly and the project is rescanned afterwards.
@@ -105,7 +137,7 @@ Presets never contain shell commands, executable code, absolute paths, credentia
 - ORM integrations install dependencies only — schema, config, and driver choices stay in your hands.
 - No auth integrations, no monorepo automation, no cloud sync, no marketplace (by design, for now).
 
-## Development
+## 🛠️ Development
 
 ```bash
 npm install
@@ -115,6 +147,6 @@ npm run check        # typecheck + lint + format check + tests + build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution process.
 
-## License
+## 📄 License
 
 [MIT](LICENSE)
