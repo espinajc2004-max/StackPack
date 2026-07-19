@@ -1,114 +1,165 @@
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
+import crypto from "node:crypto";
+import { presetSchema, PRESET_SCHEMA_VERSION, type Preset } from "../schemas/preset.js";
+import { validatePresetName } from "../utils/names.js";
 import { StackPackError } from "../utils/errors.js";
-import { validatePresetName } from "../utils/sanitize-name.js";
-import { presetSchema, type Preset } from "../schemas/preset-schema.js";
-import {
-  backupsDir,
-  ensureDirs,
-  presetsDir,
-  projectPresetsDir,
-} from "./paths.js";
+import { getProjectLocalPresetsDir, getStoragePaths } from "./paths.js";
 
 export type PresetScope = "global" | "local";
 
-export interface StoredPreset {
-  preset: Preset;
+export type PresetLocation = {
+  name: string;
   scope: PresetScope;
   filePath: string;
-}
+};
 
-function scopeDir(scope: PresetScope, cwd?: string): string {
-  return scope === "global" ? presetsDir() : projectPresetsDir(cwd);
-}
+export type PresetStoreOptions = {
+  /** Override for the global storage base directory (tests). */
+  globalBaseDir?: string;
+  /** Project root used for local presets. */
+  projectRoot?: string;
+};
 
-function presetFilePath(name: string, scope: PresetScope, cwd?: string): string {
-  const invalid = validatePresetName(name);
-  if (invalid) throw new StackPackError(`Invalid preset name "${name}"`, invalid);
-  return path.join(scopeDir(scope, cwd), `${name}.json`);
-}
-
-export function parsePresetJson(label: string, json: string): Preset {
-  let data: unknown;
-  try {
-    data = JSON.parse(json);
-  } catch {
-    throw new StackPackError(`"${label}" is not valid JSON`);
+function presetDirFor(scope: PresetScope, options: PresetStoreOptions): string {
+  if (scope === "global") {
+    return getStoragePaths(options.globalBaseDir).presetsDir;
   }
-  const result = presetSchema.safeParse(data);
-  if (!result.success) {
-    const issues = result.error.issues
-      .slice(0, 5)
-      .map((i) => `  ${i.path.join(".") || "(root)"}: ${i.message}`)
-      .join("\n");
-    throw new StackPackError(`Preset "${label}" failed validation`, issues);
+  if (!options.projectRoot) {
+    throw new StackPackError("A project directory is required for local presets.");
   }
-  return result.data;
+  return getProjectLocalPresetsDir(options.projectRoot);
 }
 
-export function listPresets(cwd?: string): StoredPreset[] {
-  const found: StoredPreset[] = [];
-  for (const scope of ["local", "global"] as const) {
-    const dir = scopeDir(scope, cwd);
-    if (!fs.existsSync(dir)) continue;
-    for (const file of fs.readdirSync(dir).sort()) {
-      if (!file.endsWith(".json")) continue;
-      const filePath = path.join(dir, file);
-      try {
-        const preset = parsePresetJson(file, fs.readFileSync(filePath, "utf8"));
-        found.push({ preset, scope, filePath });
-      } catch {
-        // invalid presets are surfaced by `stackpack doctor`, not here
-      }
-    }
+function presetFilePath(name: string, scope: PresetScope, options: PresetStoreOptions): string {
+  const validation = validatePresetName(name);
+  if (!validation.ok) {
+    throw new StackPackError(`Invalid preset name: ${validation.reason}`);
   }
-  return found;
-}
-
-export function findPreset(name: string, cwd?: string): StoredPreset | undefined {
-  for (const scope of ["local", "global"] as const) {
-    const filePath = presetFilePath(name, scope, cwd);
-    if (!fs.existsSync(filePath)) continue;
-    const preset = parsePresetJson(name, fs.readFileSync(filePath, "utf8"));
-    return { preset, scope, filePath };
+  const dir = presetDirFor(scope, options);
+  const filePath = path.resolve(dir, `${name}.json`);
+  if (path.dirname(filePath) !== path.resolve(dir)) {
+    throw new StackPackError("Preset name resolved outside the preset directory.");
   }
-  return undefined;
-}
-
-export function loadPreset(name: string, cwd?: string): StoredPreset {
-  const stored = findPreset(name, cwd);
-  if (!stored) {
-    const available = listPresets(cwd).map((s) => s.preset.name);
-    throw new StackPackError(
-      `Preset not found\n\nNo preset named "${name}" exists.`,
-      available.length > 0
-        ? `Available presets: ${available.join(", ")}`
-        : "Run: stackpack create"
-    );
-  }
-  return stored;
-}
-
-export function presetExists(name: string, scope: PresetScope, cwd?: string): boolean {
-  return fs.existsSync(presetFilePath(name, scope, cwd));
-}
-
-export function savePreset(preset: Preset, cwd?: string): string {
-  ensureDirs();
-  const filePath = presetFilePath(preset.name, preset.scope, cwd);
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, JSON.stringify(preset, null, 2) + "\n", "utf8");
   return filePath;
 }
 
-/** Moves the preset file to the backups directory, then removes it. */
-export function deletePreset(name: string, scope: PresetScope, cwd?: string): void {
-  const filePath = presetFilePath(name, scope, cwd);
-  if (!fs.existsSync(filePath)) {
-    throw new StackPackError(`Preset not found\n\nNo preset named "${name}" exists.`);
+function parsePresetJson(raw: string, source: string): Preset {
+  let data: unknown;
+  try {
+    data = JSON.parse(raw);
+  } catch (error) {
+    throw new StackPackError(`Preset file is not valid JSON: ${source}`, { cause: error });
   }
-  ensureDirs();
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  fs.copyFileSync(filePath, path.join(backupsDir(), `${name}-${stamp}.json`));
-  fs.rmSync(filePath);
+  const versionProbe = data as { schemaVersion?: unknown };
+  if (
+    typeof versionProbe?.schemaVersion === "number" &&
+    versionProbe.schemaVersion > PRESET_SCHEMA_VERSION
+  ) {
+    throw new StackPackError(
+      "This preset was created by a newer StackPack version. Update StackPack before using it.",
+    );
+  }
+  const parsed = presetSchema.safeParse(data);
+  if (!parsed.success) {
+    throw new StackPackError(`Preset file failed validation: ${source}`, {
+      hints: parsed.error.issues.slice(0, 5).map((i) => `${i.path.join(".")}: ${i.message}`),
+    });
+  }
+  return parsed.data;
+}
+
+export async function listPresets(options: PresetStoreOptions = {}): Promise<PresetLocation[]> {
+  const results: PresetLocation[] = [];
+  const scopes: PresetScope[] = options.projectRoot ? ["local", "global"] : ["global"];
+  for (const scope of scopes) {
+    const dir = presetDirFor(scope, options);
+    let entries: string[];
+    try {
+      entries = await fs.readdir(dir);
+    } catch {
+      continue;
+    }
+    for (const entry of entries.sort()) {
+      if (!entry.endsWith(".json")) continue;
+      const name = entry.slice(0, -".json".length);
+      if (!validatePresetName(name).ok) continue;
+      results.push({ name, scope, filePath: path.join(dir, entry) });
+    }
+  }
+  return results;
+}
+
+export async function findPreset(
+  name: string,
+  options: PresetStoreOptions = {},
+): Promise<PresetLocation | null> {
+  const all = await listPresets(options);
+  return all.find((p) => p.name === name) ?? null;
+}
+
+export async function loadPreset(
+  name: string,
+  options: PresetStoreOptions = {},
+): Promise<{ preset: Preset; location: PresetLocation }> {
+  const location = await findPreset(name, options);
+  if (!location) {
+    throw new StackPackError(`Preset "${name}" was not found.`, {
+      hints: ["Run: stackpack presets list"],
+    });
+  }
+  const raw = await fs.readFile(location.filePath, "utf8");
+  return { preset: parsePresetJson(raw, location.filePath), location };
+}
+
+export async function presetExists(
+  name: string,
+  scope: PresetScope,
+  options: PresetStoreOptions = {},
+): Promise<boolean> {
+  try {
+    await fs.access(presetFilePath(name, scope, options));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Atomically saves a preset: writes a temporary file, re-validates it,
+ * then renames it into place.
+ */
+export async function savePreset(
+  preset: Preset,
+  scope: PresetScope,
+  options: PresetStoreOptions = {},
+): Promise<PresetLocation> {
+  const validated = presetSchema.parse(preset);
+  const filePath = presetFilePath(validated.name, scope, options);
+  const dir = path.dirname(filePath);
+  await fs.mkdir(dir, { recursive: true });
+
+  const tmpPath = path.join(dir, `.${validated.name}.${crypto.randomUUID()}.tmp`);
+  const serialized = JSON.stringify(validated, null, 2) + "\n";
+  await fs.writeFile(tmpPath, serialized, "utf8");
+  try {
+    parsePresetJson(await fs.readFile(tmpPath, "utf8"), tmpPath);
+    await fs.rename(tmpPath, filePath);
+  } catch (error) {
+    await fs.rm(tmpPath, { force: true });
+    throw error;
+  }
+  return { name: validated.name, scope, filePath };
+}
+
+export async function deletePreset(
+  name: string,
+  options: PresetStoreOptions = {},
+): Promise<PresetLocation> {
+  const location = await findPreset(name, options);
+  if (!location) {
+    throw new StackPackError(`Preset "${name}" was not found.`);
+  }
+  await fs.rm(location.filePath);
+  return location;
 }

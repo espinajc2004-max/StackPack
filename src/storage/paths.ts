@@ -1,37 +1,38 @@
-import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export function stackpackHome(): string {
-  return process.env.STACKPACK_HOME ?? path.join(os.homedir(), ".stackpack");
+export type StoragePaths = {
+  home: string;
+  presetsDir: string;
+  backupsDir: string;
+  cacheDir: string;
+  configFile: string;
+};
+
+/**
+ * Global StackPack storage under the user's home directory.
+ * STACKPACK_HOME overrides the base directory (used by tests).
+ */
+export function getStoragePaths(baseDir?: string): StoragePaths {
+  const home = baseDir ?? process.env.STACKPACK_HOME ?? path.join(os.homedir(), ".stackpack");
+  return {
+    home,
+    presetsDir: path.join(home, "presets"),
+    backupsDir: path.join(home, "backups"),
+    cacheDir: path.join(home, "cache"),
+    configFile: path.join(home, "config.json"),
+  };
 }
 
-export function presetsDir(): string {
-  return path.join(stackpackHome(), "presets");
+/** Project-local StackPack directory (may be committed to Git). */
+export function getProjectLocalDir(projectRoot: string): string {
+  return path.join(projectRoot, ".stackpack");
 }
 
-export function cacheDir(): string {
-  return path.join(stackpackHome(), "cache");
+export function getProjectLocalPresetsDir(projectRoot: string): string {
+  return getProjectLocalDir(projectRoot);
 }
 
-export function backupsDir(): string {
-  return path.join(stackpackHome(), "backups");
-}
-
-export function configPath(): string {
-  return path.join(stackpackHome(), "config.json");
-}
-
-export function projectPresetsDir(cwd: string = process.cwd()): string {
-  return path.join(cwd, ".stackpack");
-}
-
-export function isFirstRun(): boolean {
-  return !fs.existsSync(stackpackHome());
-}
-
-export function ensureDirs(): void {
-  for (const dir of [stackpackHome(), presetsDir(), cacheDir(), backupsDir()]) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+export function getProjectBackupsDir(projectRoot: string): string {
+  return path.join(getProjectLocalDir(projectRoot), "backups");
 }

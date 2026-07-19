@@ -1,34 +1,42 @@
-import { formatPackage } from "../utils/package-parser.js";
-import type { PackageManager } from "./detect.js";
+import type { CommandDefinition, PackageManager } from "./types.js";
 
-export function packageSpecs(record: Record<string, string>): string[] {
-  return Object.entries(record).map(([name, version]) =>
-    formatPackage(name, version)
-  );
+export type PackageToInstall = { name: string; version: string };
+
+function toSpecifiers(packages: PackageToInstall[]): string[] {
+  return packages.map((pkg) => `${pkg.name}@${pkg.version}`);
 }
 
-export function installArgs(
-  pm: PackageManager,
-  specs: string[],
-  dev: boolean
-): string[] {
-  switch (pm) {
+/** Builds the official install command for the detected package manager. */
+export function packageInstallCommand(
+  packageManager: PackageManager,
+  packages: PackageToInstall[],
+  options: { dev: boolean; cwd: string },
+): CommandDefinition {
+  const specs = toSpecifiers(packages);
+  switch (packageManager) {
     case "npm":
-      return ["install", ...(dev ? ["--save-dev"] : []), ...specs];
+      return {
+        command: "npm",
+        args: ["install", options.dev ? "--save-dev" : "--save", ...specs],
+        cwd: options.cwd,
+      };
     case "pnpm":
+      return {
+        command: "pnpm",
+        args: ["add", ...(options.dev ? ["-D"] : []), ...specs],
+        cwd: options.cwd,
+      };
     case "yarn":
-      return ["add", ...(dev ? ["-D"] : []), ...specs];
+      return {
+        command: "yarn",
+        args: ["add", ...(options.dev ? ["-D"] : []), ...specs],
+        cwd: options.cwd,
+      };
     case "bun":
-      return ["add", ...(dev ? ["-d"] : []), ...specs];
+      return {
+        command: "bun",
+        args: ["add", ...(options.dev ? ["-d"] : []), ...specs],
+        cwd: options.cwd,
+      };
   }
-}
-
-export function formatInstallCommand(
-  pm: PackageManager,
-  record: Record<string, string>,
-  dev: boolean
-): string | null {
-  const specs = packageSpecs(record);
-  if (specs.length === 0) return null;
-  return [pm, ...installArgs(pm, specs, dev)].join(" ");
 }

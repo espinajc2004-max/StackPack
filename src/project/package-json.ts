@@ -1,70 +1,67 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser";
+import { packageJsonSchema, type PackageJson } from "../schemas/project-context.js";
+import { StackPackError } from "../utils/errors.js";
 
-export interface PackageJson {
-  name?: string;
-  version?: string;
-  private?: boolean;
-  packageManager?: string;
-  scripts?: Record<string, string>;
-  dependencies?: Record<string, string>;
-  devDependencies?: Record<string, string>;
-  [key: string]: unknown;
-}
-
-export async function readPackageJson(dir: string): Promise<PackageJson | null> {
+export async function readPackageJson(
+  projectRoot: string,
+): Promise<{ raw: string; data: PackageJson }> {
+  const filePath = path.join(projectRoot, "package.json");
+  let raw: string;
   try {
-    return JSON.parse(await fs.readFile(path.join(dir, "package.json"), "utf8"));
-  } catch {
-    return null;
+    raw = await fs.readFile(filePath, "utf8");
+  } catch (error) {
+    throw new StackPackError("package.json was not found.", {
+      hints: [
+        "StackPack must run inside a supported JavaScript project.",
+        `Current directory: ${projectRoot}`,
+      ],
+      cause: error,
+    });
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new StackPackError("package.json could not be parsed as JSON.", {
+      hints: [`File: ${filePath}`],
+      cause: error,
+    });
+  }
+  const validated = packageJsonSchema.safeParse(parsed);
+  if (!validated.success) {
+    throw new StackPackError("package.json has an unexpected structure.", {
+      hints: validated.error.issues.slice(0, 3).map((i) => `${i.path.join(".")}: ${i.message}`),
+    });
+  }
+  return { raw, data: validated.data };
 }
 
-export async function writePackageJson(dir: string, pkg: PackageJson): Promise<void> {
-  await fs.writeFile(
-    path.join(dir, "package.json"),
-    JSON.stringify(pkg, null, 2) + "\n",
-    "utf8"
-  );
+/** Merged dependencies and devDependencies from package.json. */
+export function getInstalledPackages(pkg: PackageJson): Record<string, string> {
+  return { ...pkg.dependencies, ...pkg.devDependencies };
 }
 
-export async function createMinimalPackageJson(dir: string): Promise<PackageJson> {
-  const pkg: PackageJson = {
-    name: path
-      .basename(path.resolve(dir))
-      .toLowerCase()
-      .replace(/[^a-z0-9-_.]/g, "-"),
-    version: "0.1.0",
-    private: true,
-  };
-  await writePackageJson(dir, pkg);
-  return pkg;
-}
-
-export interface ScriptMergeResult {
-  added: string[];
-  skipped: string[];
-}
-
-export async function mergeScripts(
-  dir: string,
+/**
+ * Applies script changes to package.json using structured JSONC edits so
+ * formatting and unrelated properties are preserved.
+ */
+export async function updatePackageJsonScripts(
+  projectRoot: string,
   scripts: Record<string, string>,
-  force: boolean
-): Promise<ScriptMergeResult> {
-  const result: ScriptMergeResult = { added: [], skipped: [] };
-  const entries = Object.entries(scripts);
-  if (entries.length === 0) return result;
-
-  const pkg = (await readPackageJson(dir)) ?? {};
-  pkg.scripts = pkg.scripts ?? {};
-  for (const [key, value] of entries) {
-    if (key in pkg.scripts && pkg.scripts[key] !== value && !force) {
-      result.skipped.push(key);
-      continue;
-    }
-    pkg.scripts[key] = value;
-    result.added.push(key);
+): Promise<void> {
+  const filePath = path.join(projectRoot, "package.json");
+  let content = await fs.readFile(filePath, "utf8");
+  for (const [name, command] of Object.entries(scripts)) {
+    const edits = modify(content, ["scripts", name], command, {
+      formattingOptions: { insertSpaces: true, tabSize: 2 },
+    });
+    content = applyEdits(content, edits);
   }
-  await writePackageJson(dir, pkg);
-  return result;
+  const reparsed: unknown = parseJsonc(content);
+  if (typeof reparsed !== "object" || reparsed === null) {
+    throw new StackPackError("Refusing to write package.json: edit produced invalid JSON.");
+  }
+  await fs.writeFile(filePath, content, "utf8");
 }
