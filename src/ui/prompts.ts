@@ -9,4 +9,13 @@ export function guard<T>(value: T | symbol): T {
   return value as T;
 }
 
+/**
+ * Unwraps a Clack prompt result, returning null on cancel (Esc) so callers
+ * can treat it as "go back one level" instead of aborting the whole flow.
+ */
+export function orBack<T>(value: T | symbol): T | null {
+  if (p.isCancel(value)) return null;
+  return value as T;
+}
+
 export { p };
