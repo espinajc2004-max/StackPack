@@ -76,15 +76,6 @@ export const reactRecipe: Recipe = {
   category: "framework",
   questions: [
     {
-      id: "language",
-      message: "Choose a language",
-      type: "select",
-      options: [
-        { value: "typescript", label: "TypeScript" },
-        { value: "javascript", label: "JavaScript" },
-      ],
-    },
-    {
       id: "buildTool",
       message: "Choose a project environment",
       type: "select",

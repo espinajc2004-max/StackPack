@@ -53,20 +53,35 @@ async function chooseTarget(
     return { dir: invokedFrom, isNewProject: false };
   }
 
-  // An existing project (package.json present) is installed into directly;
-  // otherwise ask for a project name and create a fresh folder.
-  if (await readPackageJson(invokedFrom)) {
-    p.log.info(
-      `Existing project detected — installing into:\n${invokedFrom}`
+  // Never install into an existing project silently — always ask first.
+  const existingPkg = await readPackageJson(invokedFrom);
+  if (existingPkg) {
+    const where = must(
+      await p.select({
+        message: `${SYM.warn} An existing project ("${existingPkg.name ?? path.basename(invokedFrom)}") was detected here. Where should the stack go?`,
+        options: [
+          {
+            value: "new",
+            label: "Create a new project folder",
+            hint: "recommended",
+          },
+          {
+            value: "here",
+            label: "Install into this existing project",
+            hint: invokedFrom,
+          },
+        ],
+      })
     );
-    return { dir: invokedFrom, isNewProject: false };
+    if (where === "here") return { dir: invokedFrom, isNewProject: false };
   }
 
   const projectName = must(
     await p.text({
-      message: "Project name (this becomes the folder name)",
-      initialValue: preset.name,
-      validate: (v) => validateProjectFolderName(v ?? ""),
+      message: `Project name — this becomes the folder name (it can be different from the preset name "${preset.name}")`,
+      placeholder: preset.name,
+      defaultValue: preset.name,
+      validate: (v) => (v ? validateProjectFolderName(v) : undefined),
     })
   ).trim();
 

@@ -29,7 +29,7 @@ stackpack doctor             # health-check your setup and presets
 
 **Recipes, not hardcoded stacks.** Each framework or tool is a declarative recipe (`src/recipes/`) with conditional rules — one Express recipe produces both the JavaScript and TypeScript variants, one React recipe handles Vite, React Compiler, and language differences. The engine (`src/engine/resolve.ts`) turns recipes + your answers into an installation plan: dependencies, devDependencies, generated files, and scripts. Adding a new tool means adding a recipe and a menu option, not touching the engine.
 
-**Create flow** asks: category → framework → language → framework-specific questions (build tool, React Compiler, database driver…) → feature choices (routing, state, data fetching, forms, validation, testing) → curated extras → custom npm packages (`@tanstack/react-query@5` syntax, verified against the registry) → per-package versions → review screen → save.
+**Create flow** asks, in order: language → **frontend** (React, Vue, Next.js) → **backend** (Express, NestJS, Fastify, Hono) → **ORM** (Drizzle, Prisma) → framework-specific questions (build tool, React Compiler, database driver…) → feature choices scoped to what you picked (routing, state, data fetching, forms, validation, testing) → curated extras → custom npm packages (verified against the registry, latest by default) → optional version pinning → review screen → save. Picking both a frontend and a backend produces a fullstack preset.
 
 **Install flow**: if the current directory already has a `package.json`, StackPack installs into it; otherwise it asks for a project name and creates the folder + `package.json` for you. A full final review (every package, file, and script) is shown before anything is installed. It detects the package manager (packageManager field, then lockfiles — with a prompt when lockfiles conflict), previews the exact commands on request, never overwrites existing files or scripts without asking, and reports exactly what it did.
 
@@ -55,6 +55,6 @@ npm test                   # vitest (70 tests)
 ## Roadmap
 
 - Config-file merging for existing projects (currently: ask before replacing)
-- More recipes (Vue, Svelte, Fastify, Hono, Tailwind config, ESLint everywhere)
+- More recipes (Svelte, Tailwind config, ESLint everywhere)
 - `stackpack scan` → "add missing tools" flow
 - Community recipe sharing
