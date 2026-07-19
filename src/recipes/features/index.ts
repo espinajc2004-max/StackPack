@@ -1,5 +1,8 @@
 import type { Recipe } from "../types.js";
 
+const BACKENDS = ["express", "fastify", "hono", "nest"] as const;
+const REACT_LIKE = ["react", "next"] as const;
+
 export const reactRouterRecipe: Recipe = {
   id: "react-router",
   name: "React Router",
@@ -23,7 +26,7 @@ export const zustandRecipe: Recipe = {
   name: "Zustand",
   category: "feature",
   feature: "stateManagement",
-  supports: ["react"],
+  supports: [...REACT_LIKE],
   dependencies: [{ packages: ["zustand"] }],
 };
 
@@ -32,10 +35,10 @@ export const reduxToolkitRecipe: Recipe = {
   name: "Redux Toolkit",
   category: "feature",
   feature: "stateManagement",
-  supports: ["react"],
+  supports: [...REACT_LIKE],
   dependencies: [
     { packages: ["@reduxjs/toolkit"] },
-    { when: { framework: "react" }, packages: ["react-redux"] },
+    { when: { frontend: [...REACT_LIKE] }, packages: ["react-redux"] },
   ],
 };
 
@@ -44,8 +47,17 @@ export const jotaiRecipe: Recipe = {
   name: "Jotai",
   category: "feature",
   feature: "stateManagement",
-  supports: ["react"],
+  supports: [...REACT_LIKE],
   dependencies: [{ packages: ["jotai"] }],
+};
+
+export const piniaRecipe: Recipe = {
+  id: "pinia",
+  name: "Pinia",
+  category: "feature",
+  feature: "stateManagement",
+  supports: ["vue"],
+  dependencies: [{ packages: ["pinia"] }],
 };
 
 export const tanstackQueryRecipe: Recipe = {
@@ -53,7 +65,7 @@ export const tanstackQueryRecipe: Recipe = {
   name: "TanStack Query",
   category: "feature",
   feature: "dataFetching",
-  supports: ["react"],
+  supports: [...REACT_LIKE],
   dependencies: [{ packages: ["@tanstack/react-query"] }],
 };
 
@@ -62,7 +74,7 @@ export const swrRecipe: Recipe = {
   name: "SWR",
   category: "feature",
   feature: "dataFetching",
-  supports: ["react"],
+  supports: [...REACT_LIKE],
   dependencies: [{ packages: ["swr"] }],
 };
 
@@ -71,7 +83,7 @@ export const axiosRecipe: Recipe = {
   name: "Axios",
   category: "feature",
   feature: "dataFetching",
-  supports: ["react", "express"],
+  supports: ["react", "next", "vue", ...BACKENDS],
   dependencies: [{ packages: ["axios"] }],
 };
 
@@ -80,7 +92,7 @@ export const reactHookFormRecipe: Recipe = {
   name: "React Hook Form",
   category: "feature",
   feature: "forms",
-  supports: ["react"],
+  supports: [...REACT_LIKE],
   dependencies: [{ packages: ["react-hook-form"] }],
 };
 
@@ -89,7 +101,7 @@ export const zodRecipe: Recipe = {
   name: "Zod",
   category: "feature",
   feature: "validation",
-  supports: ["react", "express"],
+  supports: ["react", "next", "vue", ...BACKENDS],
   dependencies: [{ packages: ["zod"] }],
 };
 
@@ -98,7 +110,7 @@ export const yupRecipe: Recipe = {
   name: "Yup",
   category: "feature",
   feature: "validation",
-  supports: ["react"],
+  supports: [...REACT_LIKE],
   dependencies: [{ packages: ["yup"] }],
 };
 
@@ -107,16 +119,20 @@ export const vitestRecipe: Recipe = {
   name: "Vitest",
   category: "feature",
   feature: "testing",
-  supports: ["react", "express"],
+  supports: ["react", "next", "vue", ...BACKENDS],
   devDependencies: [
     { packages: ["vitest"] },
     {
-      when: { framework: "react" },
+      when: { frontend: [...REACT_LIKE] },
       packages: ["jsdom", "@testing-library/react", "@testing-library/jest-dom"],
     },
-    { when: { framework: "express" }, packages: ["supertest"] },
     {
-      when: { framework: "express", language: "typescript" },
+      when: { frontend: "vue" },
+      packages: ["jsdom", "@vue/test-utils"],
+    },
+    { when: { backend: [...BACKENDS] }, packages: ["supertest"] },
+    {
+      when: { backend: [...BACKENDS], language: "typescript" },
       packages: ["@types/supertest"],
     },
   ],
@@ -128,12 +144,12 @@ export const jestRecipe: Recipe = {
   name: "Jest",
   category: "feature",
   feature: "testing",
-  supports: ["react", "express"],
+  supports: ["react", "next", ...BACKENDS],
   devDependencies: [
     { packages: ["jest"] },
     { when: { language: "typescript" }, packages: ["ts-jest", "@types/jest"] },
     {
-      when: { framework: "react" },
+      when: { frontend: [...REACT_LIKE] },
       packages: [
         "jest-environment-jsdom",
         "@testing-library/react",
@@ -150,6 +166,7 @@ export const featureRecipes: Recipe[] = [
   zustandRecipe,
   reduxToolkitRecipe,
   jotaiRecipe,
+  piniaRecipe,
   tanstackQueryRecipe,
   swrRecipe,
   axiosRecipe,

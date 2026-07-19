@@ -66,17 +66,6 @@ export const expressRecipe: Recipe = {
   id: "express",
   name: "Express",
   category: "framework",
-  questions: [
-    {
-      id: "language",
-      message: "Choose a language",
-      type: "select",
-      options: [
-        { value: "typescript", label: "TypeScript" },
-        { value: "javascript", label: "JavaScript" },
-      ],
-    },
-  ],
   dependencies: [{ packages: ["express", "cors", "helmet", "dotenv"] }],
   devDependencies: [
     { when: { language: "javascript" }, packages: ["nodemon", "eslint", "@eslint/js"] },

@@ -4,8 +4,7 @@ export const drizzleRecipe: Recipe = {
   id: "drizzle",
   name: "Drizzle ORM",
   category: "feature",
-  feature: "database",
-  supports: ["express"],
+  feature: "orm",
   questions: [
     {
       id: "databaseDriver",

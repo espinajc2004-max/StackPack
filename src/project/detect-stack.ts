@@ -19,13 +19,16 @@ const DETECTORS: Detector[] = [
   {
     category: "framework",
     label: "Framework",
+    // "next" must come before "react": Next.js projects also depend on react
     candidates: {
+      next: "next",
       react: "react",
-      vue: null,
+      vue: "vue",
       svelte: null,
+      "@nestjs/core": "nest",
       express: "express",
-      fastify: null,
-      hono: null,
+      fastify: "fastify",
+      hono: "hono",
     },
   },
   {
@@ -77,7 +80,11 @@ const DETECTORS: Detector[] = [
   {
     category: "orm",
     label: "ORM",
-    candidates: { "drizzle-orm": "drizzle", prisma: null, "@prisma/client": null },
+    candidates: {
+      "drizzle-orm": "drizzle",
+      "@prisma/client": "prisma",
+      prisma: "prisma",
+    },
   },
   {
     category: "testing",

@@ -7,9 +7,12 @@ import {
 import { presetExists, savePreset } from "../storage/preset-store.js";
 import { presetsDir } from "../storage/paths.js";
 import {
-  featuresForFramework,
-  frameworkRecipes,
+  backendFrameworks,
+  featuresForFrameworks,
+  frontendFrameworks,
   getRecipe,
+  ormRecipes,
+  TS_ONLY_FRAMEWORKS,
 } from "../recipes/registry.js";
 import type { Answers, Recipe, RecipeQuestion } from "../recipes/types.js";
 import { matchesCondition, resolvePlan } from "../engine/resolve.js";
@@ -58,6 +61,40 @@ async function askQuestion(question: RecipeQuestion): Promise<string | boolean> 
   );
 }
 
+/** One step of the framework sequence: pick from a list of recipes or None. */
+async function pickFramework(
+  message: string,
+  recipes: Recipe[],
+  answers: Answers,
+  usedRecipes: Recipe[]
+): Promise<string> {
+  const language = answers.language;
+  const available = recipes.filter(
+    (r) => !(language === "javascript" && TS_ONLY_FRAMEWORKS.has(r.id))
+  );
+
+  const choice = must(
+    await p.select({
+      message,
+      options: [
+        ...available.map((r) => ({
+          value: r.id,
+          label: r.name,
+          hint: TS_ONLY_FRAMEWORKS.has(r.id) ? "TypeScript" : undefined,
+        })),
+        { value: "none", label: "None" },
+      ],
+    })
+  );
+
+  if (choice !== "none") {
+    const recipe = getRecipe(choice)!;
+    usedRecipes.push(recipe);
+    await askRecipeQuestions(recipe, answers);
+  }
+  return choice;
+}
+
 type FlowResult = "save" | "back" | "cancel";
 
 async function runCreateFlow(scope: "global" | "local"): Promise<FlowResult> {
@@ -84,59 +121,63 @@ async function runCreateFlow(scope: "global" | "local"): Promise<FlowResult> {
     if (!overwrite) return "cancel";
   }
 
-  const category = must(
-    await p.select({
-      message: "What are you building?",
-      options: [
-        { value: "frontend", label: "Frontend" },
-        { value: "backend", label: "Backend" },
-        { value: "general", label: "General package preset" },
-      ],
-    })
-  ) as "frontend" | "backend" | "general";
-
   const answers: Answers = {};
   const usedRecipes: Recipe[] = [];
-  let framework: string | undefined;
 
-  if (category !== "general") {
-    const frameworks = frameworkRecipes[category];
-    const frameworkId = must(
+  answers.language = must(
+    await p.select({
+      message: "Choose a language",
+      options: [
+        { value: "typescript", label: "TypeScript" },
+        { value: "javascript", label: "JavaScript" },
+      ],
+    })
+  );
+
+  // 1. Frontend → 2. Backend → 3. ORM
+  const frontend = await pickFramework(
+    "Choose a frontend framework",
+    frontendFrameworks,
+    answers,
+    usedRecipes
+  );
+  answers.frontend = frontend;
+
+  const backend = await pickFramework(
+    "Choose a backend framework",
+    backendFrameworks,
+    answers,
+    usedRecipes
+  );
+  answers.backend = backend;
+
+  const orm = await pickFramework(
+    "Choose an ORM / database toolkit",
+    ormRecipes,
+    answers,
+    usedRecipes
+  );
+  answers.orm = orm;
+
+  // 4. Feature questions for whatever frameworks were selected
+  const selectedFrameworks = [frontend, backend].filter((f) => f !== "none");
+  for (const feature of featuresForFrameworks(selectedFrameworks)) {
+    const value = must(
       await p.select({
-        message: `Choose a ${category} framework`,
-        options: [
-          ...frameworks.map((r) => ({ value: r.id, label: r.name })),
-          { value: "none", label: "No framework" },
-        ],
+        message: feature.message,
+        options: feature.options.map((o) => ({
+          value: o.value,
+          label: o.label,
+          hint: o.hint,
+        })),
       })
     );
-
-    if (frameworkId !== "none") {
-      framework = frameworkId;
-      answers.framework = frameworkId;
-      const recipe = getRecipe(frameworkId)!;
-      usedRecipes.push(recipe);
-      await askRecipeQuestions(recipe, answers);
-
-      for (const feature of featuresForFramework(frameworkId)) {
-        const value = must(
-          await p.select({
-            message: feature.message,
-            options: feature.options.map((o) => ({
-              value: o.value,
-              label: o.label,
-              hint: o.hint,
-            })),
-          })
-        );
-        answers[feature.id] = value;
-        const option = feature.options.find((o) => o.value === value);
-        if (option?.recipeId) {
-          const featureRecipe = getRecipe(option.recipeId)!;
-          usedRecipes.push(featureRecipe);
-          await askRecipeQuestions(featureRecipe, answers);
-        }
-      }
+    answers[feature.id] = value;
+    const option = feature.options.find((o) => o.value === value);
+    if (option?.recipeId) {
+      const featureRecipe = getRecipe(option.recipeId)!;
+      usedRecipes.push(featureRecipe);
+      await askRecipeQuestions(featureRecipe, answers);
     }
   }
 
@@ -155,15 +196,30 @@ async function runCreateFlow(scope: "global" | "local"): Promise<FlowResult> {
   await addCustomPackages(selected);
   await editVersions(selected);
 
-  const { framework: _fw, ...selections } = answers;
   const environment: PresetEnvironment = {
-    type: category,
-    framework,
+    type:
+      frontend !== "none" && backend !== "none"
+        ? "fullstack"
+        : frontend !== "none"
+          ? "frontend"
+          : backend !== "none"
+            ? "backend"
+            : "general",
+    framework: frontend !== "none" ? frontend : backend !== "none" ? backend : undefined,
     language:
       answers.language === "typescript" || answers.language === "javascript"
         ? answers.language
         : undefined,
-    buildTool: typeof answers.buildTool === "string" ? answers.buildTool : undefined,
+    buildTool:
+      frontend === "react"
+        ? typeof answers.buildTool === "string"
+          ? answers.buildTool
+          : undefined
+        : frontend === "vue"
+          ? "vite"
+          : frontend === "next"
+            ? "next"
+            : undefined,
   };
 
   const now = new Date().toISOString();
@@ -175,7 +231,7 @@ async function runCreateFlow(scope: "global" | "local"): Promise<FlowResult> {
     createdAt: now,
     updatedAt: now,
     environment,
-    selections,
+    selections: answers,
     dependencies: selected.dependencies,
     devDependencies: selected.devDependencies,
     recipes: usedRecipes.map((r) => r.id),
