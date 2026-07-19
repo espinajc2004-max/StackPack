@@ -14,6 +14,12 @@ Complete rewrite around the official-first integration builder design.
 - Post-creation project detection (framework, build tool, language, router type, package manager) that inspects the real generated files.
 - Category-based, jumpable integration dashboard with persistent in-memory selections.
 - Curated recipes: React Router, Zustand, Redux Toolkit, TanStack Query (+ Devtools), React Hook Form with Zod, Vitest with React Testing Library, Playwright (official initializer).
+- UI Components category: shadcn/ui via the official CLI (with Tailwind CSS and `@/*` alias setup on Vite projects), plus Radix UI, Base UI, and React Aria.
+- Database / ORM category (install only): Prisma, Drizzle ORM, TypeORM, Sequelize, MikroORM.
+- Additional install-only recipes: Jotai, MobX, Valtio, XState, Axios, Valibot, ArkType.
+- Typed custom packages are remembered locally and can be re-added or deleted in later setups.
+- Preset browser in the main menu with a direct "Delete a preset" option and per-preset detail view.
+- Esc inside dashboard sub-screens goes back one level instead of cancelling the whole setup.
 - Custom npm package input with strict specifier validation (package-only installs).
 - Package version editor (versions, ranges, and npm dist-tags).
 - Installation plan review separating StackPack's exact changes from delegated official-tool changes; dry-run mode.

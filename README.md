@@ -34,17 +34,25 @@ Existing React + Vite and Next.js projects are detected too (`stackpack add`, `s
 
 ## Curated integrations
 
-| Category             | Integration                            | Method            |
-| -------------------- | -------------------------------------- | ----------------- |
-| Routing              | React Router (React + Vite only)       | package install   |
-| State Management     | Zustand                                | package install   |
-| State Management     | Redux Toolkit (+ optional store files) | package install   |
-| Data Fetching        | TanStack Query (+ optional Devtools)   | package install   |
-| Forms and Validation | React Hook Form with Zod               | package install   |
-| Testing              | Vitest with React Testing Library      | packages + config |
-| Testing              | Playwright                             | official init CLI |
+| Category             | Integration                                       | Method            |
+| -------------------- | ------------------------------------------------- | ----------------- |
+| Routing              | React Router (React + Vite only)                  | package install   |
+| State Management     | Zustand                                           | package install   |
+| State Management     | Redux Toolkit (+ optional store files)            | package install   |
+| State Management     | Jotai, MobX, Valtio, XState                       | install only      |
+| Data Fetching        | TanStack Query (+ optional Devtools)              | package install   |
+| Data Fetching        | Axios                                             | install only      |
+| Forms and Validation | React Hook Form with Zod                          | package install   |
+| Forms and Validation | Valibot, ArkType                                  | install only      |
+| UI Components        | shadcn/ui (Tailwind + alias setup on Vite)        | official CLI      |
+| UI Components        | Radix UI, Base UI, React Aria                     | package install   |
+| Database / ORM       | Prisma, Drizzle ORM, TypeORM, Sequelize, MikroORM | install only      |
+| Testing              | Vitest with React Testing Library                 | packages + config |
+| Testing              | Playwright                                        | official init CLI |
 
-Plus custom npm packages (installed only, never auto-configured).
+"Install only" means StackPack installs the official packages and stops — you write the setup files yourself, and the review says so explicitly.
+
+Plus custom npm packages (installed only, never auto-configured). Custom packages you type in are remembered locally so future setups can re-add them in one step.
 
 Framework-specific filtering applies automatically — e.g. React Router is hidden on Next.js projects because Next.js provides routing.
 
@@ -68,7 +76,7 @@ stackpack --no-color
 
 ## The dashboard
 
-After the base project exists, StackPack does not walk you through a fixed wizard. It opens a jumpable dashboard: enter any category, select or remove an integration, come back later, edit versions, and review only when you are ready. Selections persist in memory until you install or cancel.
+After the base project exists, StackPack does not walk you through a fixed wizard. It opens a jumpable dashboard: enter any category, select or remove an integration, come back later, edit versions, and review only when you are ready. Selections persist in memory until you install or cancel. Pressing Esc inside a category goes back one screen without losing your selections; only Esc at the dashboard itself cancels the setup.
 
 ## Privacy model
 
@@ -94,7 +102,8 @@ Presets never contain shell commands, executable code, absolute paths, credentia
 - Curated recipes cover React + Vite and Next.js only.
 - StackPack cannot predict every file an official initializer creates; the review says so explicitly and the project is rescanned afterwards.
 - Rollback is best effort: backed-up files can be restored, but package-manager changes are not automatically reversed.
-- No ORM/auth integrations, no monorepo automation, no cloud sync, no marketplace (by design, for now).
+- ORM integrations install dependencies only — schema, config, and driver choices stay in your hands.
+- No auth integrations, no monorepo automation, no cloud sync, no marketplace (by design, for now).
 
 ## Development
 
