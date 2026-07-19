@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { applyEdits, modify, parse as parseJsonc } from "jsonc-parser";
 import type { InstallationPlan } from "./build-plan.js";
 import { detectProject } from "./detect-project.js";
 import type { ProjectContext } from "../schemas/project-context.js";
@@ -70,8 +71,10 @@ async function runOrThrow(
 
 /**
  * Applies a reviewed installation plan using the safe execution flow:
- * backups -> official package installs -> official initializers -> rescan ->
- * StackPack file changes -> package.json script updates.
+ * backups -> official package installs -> StackPack file changes and JSON
+ * edits -> official initializers -> rescan -> package.json script updates.
+ * Files come before initializers because official CLIs (e.g. shadcn)
+ * validate prerequisites like Tailwind config and import aliases.
  */
 export async function applyPlan(
   plan: InstallationPlan,
@@ -161,20 +164,9 @@ export async function applyPlan(
       );
     }
 
-    for (const entry of plan.initializers) {
-      progress(`Running the official ${entry.name} initializer...`);
-      await runOrThrow(
-        options.runner,
-        entry.initializer.buildCommand(pm, root),
-        `Official ${entry.name} initializer`,
-        result.commandsRun,
-      );
-    }
-
-    // Official tools may have changed anything; rescan before file edits.
-    progress("Rescanning the project...");
-    result.refreshedContext = await detectProject(root, { packageManagerOverride: pm });
-
+    // StackPack's own files and JSON edits land BEFORE official initializers:
+    // initializers like the shadcn CLI validate the project state (Tailwind
+    // config, import aliases) and fail if prerequisites are not there yet.
     for (const file of plan.filesToCreate) {
       const target = resolveInsideRoot(root, file.path);
       let finalPath = file.path;
@@ -203,6 +195,44 @@ export async function applyPlan(
       await fs.writeFile(finalTarget, file.contents, "utf8");
       result.createdFiles.push(finalPath);
     }
+
+    for (const edit of plan.jsonEdits) {
+      const target = resolveInsideRoot(root, edit.path);
+      try {
+        await fs.access(target);
+      } catch {
+        result.notes.push(`Skipped JSON edit: ${edit.path} does not exist.`);
+        continue;
+      }
+      progress(`Updating ${edit.path}...`);
+      let content = await fs.readFile(target, "utf8");
+      for (const change of edit.edits) {
+        const edits = modify(content, change.jsonPath, change.value, {
+          formattingOptions: { insertSpaces: true, tabSize: 2 },
+        });
+        content = applyEdits(content, edits);
+      }
+      const reparsed: unknown = parseJsonc(content);
+      if (typeof reparsed !== "object" || reparsed === null) {
+        throw new StackPackError(`Refusing to write ${edit.path}: edit produced invalid JSON.`);
+      }
+      await fs.writeFile(target, content, "utf8");
+      result.modifiedFiles.push(edit.path);
+    }
+
+    for (const entry of plan.initializers) {
+      progress(`Running the official ${entry.name} initializer...`);
+      await runOrThrow(
+        options.runner,
+        entry.initializer.buildCommand(pm, root),
+        `Official ${entry.name} initializer`,
+        result.commandsRun,
+      );
+    }
+
+    // Official tools may have changed anything; rescan afterwards.
+    progress("Rescanning the project...");
+    result.refreshedContext = await detectProject(root, { packageManagerOverride: pm });
 
     const finalScripts: Record<string, string> = {};
     const conflictNames = new Set(plan.scriptConflicts.map((c) => c.name));

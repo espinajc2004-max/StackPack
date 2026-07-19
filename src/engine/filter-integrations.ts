@@ -38,6 +38,21 @@ export function filterIntegrations(
         detection: { status: "not-installed" },
       };
     }
+    // On Vite the shadcn recipe sets Tailwind up itself; on Next.js it must
+    // already be there (the official CLI aborts without it).
+    if (
+      recipe.id === "shadcn" &&
+      context.framework === "next" &&
+      !("tailwindcss" in context.installedPackages)
+    ) {
+      return {
+        recipe,
+        compatibility: "incompatible",
+        reason:
+          "shadcn/ui needs Tailwind CSS. Create the Next.js project with Tailwind (the recommended defaults include it) or add Tailwind first.",
+        detection: { status: "not-installed" },
+      };
+    }
     if (!isProjectSupported(recipe, context)) {
       return {
         recipe,

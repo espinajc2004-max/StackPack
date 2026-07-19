@@ -46,13 +46,31 @@ export type PlannedFile = {
   path: string;
   contents: string;
   description?: string;
+  /**
+   * When set, the integration does not work unless an existing file is
+   * replaced; the conflict prompt makes "Replace after backup" the
+   * recommended default and shows this reason.
+   */
+  requiredReason?: string;
 };
 
 export type PlannedScript = { name: string; command: string };
 
+/**
+ * Targeted JSONC edits to an existing file (e.g. tsconfig paths). Applied
+ * with jsonc-parser so formatting and unrelated keys are preserved; the file
+ * is backed up first and skipped with a note if it does not exist.
+ */
+export type PlannedJsonEdit = {
+  path: string;
+  description?: string;
+  edits: Array<{ jsonPath: Array<string | number>; value: unknown }>;
+};
+
 export type IntegrationPlan = {
   packages: PackageRequirement[];
   filesToCreate: PlannedFile[];
+  jsonEdits?: PlannedJsonEdit[];
   scripts: PlannedScript[];
   postInstallNotes: string[];
   initializer?: InitializerSpec;
