@@ -16,9 +16,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Save-and-load presets: installing from a preset without changing anything no longer asks to save again — it finishes with "good to go". If the setup was modified after loading, the save prompt says so and pre-fills the preset name for easy updating.
 - `stackpack new` ends with a "Next steps" note (`cd <project>` + dev command).
 
+### Changed (requirements)
+
+- Node.js 22 or newer is now required (was 18.17). The `execa` dependency uses `Set.union`, which does not exist before Node 22, and Node 20 reached end of life in April 2026. CI now tests Node 22 and 24.
+
 ### Fixed
 
 - `stackpack --version` now reports the real version (0.3.1 still printed 0.3.0).
+- CI on Windows: a `.gitattributes` file now forces LF line endings on checkout, so `prettier --check` no longer fails on Windows runners.
 
 ## [0.3.1] - 2026-07-20
 
