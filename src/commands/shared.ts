@@ -337,15 +337,59 @@ export function buildPresetFromSelection(params: {
   };
 }
 
+/**
+ * True when the current selection still matches what the preset describes —
+ * a save-and-load flow should not re-ask to save an unchanged setup.
+ */
+export function selectionMatchesPreset(preset: Preset, selection: SetupSelection): boolean {
+  const dependencies: Record<string, string> = {};
+  const devDependencies: Record<string, string> = {};
+  for (const pkg of selection.customPackages) {
+    (pkg.dependencyType === "dependency" ? dependencies : devDependencies)[pkg.name] = pkg.version;
+  }
+  const current = {
+    integrations: selectedRecipes(selection).map(({ recipe, options }) => ({
+      id: recipe.id,
+      options,
+    })),
+    dependencies,
+    devDependencies,
+    versionOverrides: selection.versionOverrides,
+  };
+  const saved = {
+    integrations: preset.integrations.map(({ id, options }) => ({ id, options })),
+    dependencies: preset.customPackages.dependencies,
+    devDependencies: preset.customPackages.devDependencies,
+    versionOverrides: preset.versionOverrides,
+  };
+  return JSON.stringify(current) === JSON.stringify(saved);
+}
+
 /** Post-install offer to save the applied setup as a preset. */
 export async function offerToSavePreset(
   context: ProjectContext,
   selection: SetupSelection,
+  options: { sourcePreset?: Preset } = {},
 ): Promise<void> {
   if (context.framework === "unknown" || context.language === "unknown") return;
 
+  // Save-and-load: a setup loaded from a preset and left unchanged has
+  // nothing new to save, so skip the question entirely.
+  const source = options.sourcePreset;
+  if (source && selectionMatchesPreset(source, selection)) {
+    p.log.success(
+      `Installed from preset "${source.displayName ?? source.name}" — nothing new to save. Good to go!`,
+    );
+    return;
+  }
+
   const wantsSave = guard(
-    await p.confirm({ message: "Save this setup as a preset?", initialValue: false }),
+    await p.confirm({
+      message: source
+        ? `This setup was changed after loading preset "${source.name}". Save the updated setup as a preset?`
+        : "Save this setup as a preset?",
+      initialValue: false,
+    }),
   );
   if (!wantsSave) return;
 
@@ -353,6 +397,7 @@ export async function offerToSavePreset(
     await p.text({
       message: "Preset name",
       placeholder: "my-react-stack",
+      initialValue: source?.name,
       validate(value) {
         const result = validatePresetName(value ?? "");
         return result.ok ? undefined : result.reason;

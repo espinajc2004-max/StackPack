@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { buildPresetFromSelection } from "../src/commands/shared.js";
+import { buildPresetFromSelection, selectionMatchesPreset } from "../src/commands/shared.js";
 import { presetToSelection } from "../src/commands/selection-utils.js";
 import { createEmptySelection } from "../src/dashboard/state.js";
 import { detectProject } from "../src/engine/detect-project.js";
@@ -63,6 +63,19 @@ describe("preset round-trip", () => {
       { name: "sonner", version: "latest", dependencyType: "dependency" },
     ]);
     expect(restored.versionOverrides).toEqual({ "@tanstack/react-query": "5" });
+
+    // Save-and-load: an untouched loaded selection matches its source preset,
+    // and any change (add, remove, override) makes it stop matching.
+    expect(selectionMatchesPreset(validated, restored)).toBe(true);
+    const withExtra = presetToSelection(validated);
+    withExtra.stateManagement = { id: "zustand", options: {} };
+    expect(selectionMatchesPreset(validated, withExtra)).toBe(false);
+    const withoutRouting = presetToSelection(validated);
+    withoutRouting.routing = undefined;
+    expect(selectionMatchesPreset(validated, withoutRouting)).toBe(false);
+    const withOverride = presetToSelection(validated);
+    withOverride.versionOverrides["zod"] = "3";
+    expect(selectionMatchesPreset(validated, withOverride)).toBe(false);
   });
 });
 

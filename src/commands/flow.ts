@@ -1,4 +1,5 @@
 import type { ProjectContext } from "../schemas/project-context.js";
+import type { Preset } from "../schemas/preset.js";
 import type { SetupSelection } from "../dashboard/state.js";
 import { runDashboard } from "../dashboard/main-dashboard.js";
 import { reviewAndInstall, offerToSavePreset } from "./shared.js";
@@ -14,6 +15,8 @@ export async function dashboardInstallLoop(params: {
   dryRun: boolean;
   startAtReview?: boolean;
   runner?: CommandRunner;
+  /** The preset this setup was loaded from, if any (save-and-load flow). */
+  sourcePreset?: Preset;
 }): Promise<"installed" | "dry-run" | "cancelled"> {
   let atReview = params.startAtReview === true;
   for (;;) {
@@ -32,7 +35,9 @@ export async function dashboardInstallLoop(params: {
       continue;
     }
     if (result === "installed") {
-      await offerToSavePreset(params.context, params.selection);
+      await offerToSavePreset(params.context, params.selection, {
+        sourcePreset: params.sourcePreset,
+      });
       return "installed";
     }
     return result === "dry-run" ? "dry-run" : "cancelled";
