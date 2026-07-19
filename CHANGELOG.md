@@ -4,17 +4,27 @@ All notable changes to StackPack are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.3.1] - 2026-07-20
+## [0.3.2] - 2026-07-20
 
 ### Added
 
-- Uninstall section in the README: how to remove the global command, clean up the `~/.stackpack` presets folder, and a note that created projects are never affected.
 - `stackpack new` now warns and asks for confirmation when run inside an existing project (a folder that already has a `package.json`), so nested projects are never created by accident.
+- Update notice in the interactive menu: an anonymous, once-per-day registry check shows when a newer version exists (never auto-updates, fails silently offline, opt out with `STACKPACK_NO_UPDATE_CHECK`).
 
 ### Changed
 
 - Save-and-load presets: installing from a preset without changing anything no longer asks to save again — it finishes with "good to go". If the setup was modified after loading, the save prompt says so and pre-fills the preset name for easy updating.
 - `stackpack new` ends with a "Next steps" note (`cd <project>` + dev command).
+
+### Fixed
+
+- `stackpack --version` now reports the real version (0.3.1 still printed 0.3.0).
+
+## [0.3.1] - 2026-07-20
+
+### Added
+
+- Uninstall section in the README: how to remove the global command, clean up the `~/.stackpack` presets folder, and a note that created projects are never affected.
 
 ## [0.3.0] - 2026-07-19
 

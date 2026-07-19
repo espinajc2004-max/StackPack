@@ -1,6 +1,6 @@
 {
   "name": "stackpack-cli",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Local-first, privacy-focused terminal integration builder for JavaScript and TypeScript projects. Official tooling first, presets stay on your device.",
   "type": "module",
   "license": "MIT",

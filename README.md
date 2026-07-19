@@ -137,6 +137,8 @@ StackPack requires **no sign-up, no login, no server, no telemetry**. Presets ar
 
 Presets never contain shell commands, executable code, absolute paths, credentials, or `.env` values — the schema rejects anything unexpected. Internet access is only needed to run official creators/initializers and install packages.
 
+One small exception, in the open: the interactive menu checks the npm registry (at most once per day, cached locally) to tell you when a newer StackPack version exists. It is an anonymous read-only request that sends nothing about you or your projects, never updates anything by itself, fails silently offline, and can be disabled completely by setting the `STACKPACK_NO_UPDATE_CHECK` environment variable.
+
 ## Safety
 
 - Nothing is installed before you confirm the reviewed plan.
