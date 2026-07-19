@@ -47,6 +47,18 @@ export function routerLabel(context: ProjectContext): string | undefined {
   }
 }
 
+function dependencySection(title: string, packages: Record<string, string>): string | undefined {
+  const entries = Object.entries(packages);
+  if (entries.length === 0) return undefined;
+  const cap = 12;
+  const shown = entries
+    .slice(0, cap)
+    .map(([name, version]) => `  ${name} ${pc.green(version)}`)
+    .join("\n");
+  const more = entries.length > cap ? `\n  ${pc.dim(`…and ${entries.length - cap} more`)}` : "";
+  return `${pc.dim(title)}\n${shown}${more}`;
+}
+
 export function describeContext(context: ProjectContext): string {
   const lines = [
     `${pc.dim("Framework")}\n  ${frameworkLabel(context)}`,
@@ -56,5 +68,12 @@ export function describeContext(context: ProjectContext): string {
   const router = routerLabel(context);
   if (router) lines.push(`${pc.dim("Router")}\n  ${router}`);
   lines.push(`${pc.dim("Package manager")}\n  ${context.packageManager}`);
+  const dependencies = dependencySection("Dependencies", context.packageJson.dependencies ?? {});
+  if (dependencies) lines.push(dependencies);
+  const devDependencies = dependencySection(
+    "Development dependencies",
+    context.packageJson.devDependencies ?? {},
+  );
+  if (devDependencies) lines.push(devDependencies);
   return lines.join("\n");
 }

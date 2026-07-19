@@ -1,3 +1,4 @@
+import pc from "picocolors";
 import { guard, p } from "../ui/prompts.js";
 import type { ProjectContext } from "../schemas/project-context.js";
 import { filterIntegrations, type IntegrationAvailability } from "../engine/filter-integrations.js";
@@ -17,17 +18,28 @@ import {
 import { runCustomPackagesCategory } from "./custom-packages.js";
 import { runVersionEditor } from "./version-editor.js";
 
-function selectionLabel(entry: SelectedIntegration | undefined): string {
-  if (!entry) return "Not selected";
+function selectionLabel(entry: SelectedIntegration | undefined): string | undefined {
+  if (!entry) return undefined;
   const recipe = getRecipe(entry.id);
   if (!recipe) return entry.id;
   const detail = recipe.describeOptions?.(entry.options);
   return detail ? `${recipe.name} (${detail})` : recipe.name;
 }
 
-function testingLabel(selection: SetupSelection): string {
-  if (selection.testing.length === 0) return "Not selected";
+function testingLabel(selection: SetupSelection): string | undefined {
+  if (selection.testing.length === 0) return undefined;
   return selection.testing.map((entry) => getRecipe(entry.id)?.name ?? entry.id).join(" + ");
+}
+
+/** Category rows turn green with a check once something is selected. */
+function categoryOption(
+  value: string,
+  label: string,
+  selected: string | undefined,
+): { value: string; label: string; hint: string } {
+  return selected
+    ? { value, label: `${label} ${pc.green("✓")}`, hint: pc.green(selected) }
+    : { value, label, hint: "Not selected" };
 }
 
 function categoryHasVisibleRecipes(
@@ -63,30 +75,30 @@ export async function runDashboard(
 
     const options: Array<{ value: string; label: string; hint?: string }> = [];
     if (categoryHasVisibleRecipes(availabilities, "routing")) {
-      options.push({ value: "routing", label: "Routing", hint: selectionLabel(selection.routing) });
+      options.push(categoryOption("routing", "Routing", selectionLabel(selection.routing)));
     }
     options.push(
-      {
-        value: "state-management",
-        label: "State Management",
-        hint: selectionLabel(selection.stateManagement),
-      },
-      {
-        value: "data-fetching",
-        label: "Data Fetching and API",
-        hint: selectionLabel(selection.dataFetching),
-      },
-      {
-        value: "forms-validation",
-        label: "Forms and Validation",
-        hint: selectionLabel(selection.formsAndValidation),
-      },
-      { value: "testing", label: "Testing", hint: testingLabel(selection) },
-      {
-        value: "custom-packages",
-        label: "Custom Packages",
-        hint: `${customCount} package${customCount === 1 ? "" : "s"}`,
-      },
+      categoryOption(
+        "state-management",
+        "State Management",
+        selectionLabel(selection.stateManagement),
+      ),
+      categoryOption(
+        "data-fetching",
+        "Data Fetching and API",
+        selectionLabel(selection.dataFetching),
+      ),
+      categoryOption(
+        "forms-validation",
+        "Forms and Validation",
+        selectionLabel(selection.formsAndValidation),
+      ),
+      categoryOption("testing", "Testing", testingLabel(selection)),
+      categoryOption(
+        "custom-packages",
+        "Custom Packages",
+        customCount > 0 ? `${customCount} package${customCount === 1 ? "" : "s"}` : undefined,
+      ),
       { value: "versions", label: "Edit Package Versions" },
       { value: "review", label: "Review and Install" },
     );
