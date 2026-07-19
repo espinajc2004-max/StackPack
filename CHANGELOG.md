@@ -4,21 +4,14 @@ All notable changes to StackPack are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [0.3.2] - 2026-07-20
+## [0.3.3] - 2026-07-20
 
 ### Added
 
-- `stackpack new` now warns and asks for confirmation when run inside an existing project (a folder that already has a `package.json`), so nested projects are never created by accident.
-- Update notice in the interactive menu: an anonymous, once-per-day registry check shows when a newer version exists (never auto-updates, fails silently offline, opt out with `STACKPACK_NO_UPDATE_CHECK`).
 - Dashboard project inventory: category rows now show what the project already has installed (name, version, partial-setup warning), separate from this session's picks.
 - `stackpack install <preset> [project-name]` (alias `i`): express mode — create a project from a saved preset in one shot, with the review screen as the single decision point.
 - `stackpack presets edit <name>` and an "Edit this preset" option in the presets browser: change a preset's integrations in the dashboard and save back to the same file, without creating or touching any project.
 - Tests covering paths with spaces and unicode characters (project detection, preset store, backups, path-traversal guards).
-
-### Changed
-
-- Save-and-load presets: installing from a preset without changing anything no longer asks to save again — it finishes with "good to go". If the setup was modified after loading, the save prompt says so and pre-fills the preset name for easy updating.
-- `stackpack new` ends with a "Next steps" note (`cd <project>` + dev command).
 
 ### Changed (requirements)
 
@@ -26,8 +19,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- `stackpack --version` now reports the real version (0.3.1 still printed 0.3.0).
 - CI on Windows: a `.gitattributes` file now forces LF line endings on checkout, so `prettier --check` no longer fails on Windows runners.
+
+## [0.3.2] - 2026-07-20
+
+### Added
+
+- `stackpack new` now warns and asks for confirmation when run inside an existing project (a folder that already has a `package.json`), so nested projects are never created by accident.
+- Update notice in the interactive menu: an anonymous, once-per-day registry check shows when a newer version exists (never auto-updates, fails silently offline, opt out with `STACKPACK_NO_UPDATE_CHECK`).
+
+### Changed
+
+- Save-and-load presets: installing from a preset without changing anything no longer asks to save again — it finishes with "good to go". If the setup was modified after loading, the save prompt says so and pre-fills the preset name for easy updating.
+- `stackpack new` ends with a "Next steps" note (`cd <project>` + dev command).
+
+### Fixed
+
+- `stackpack --version` now reports the real version (0.3.1 still printed 0.3.0).
 
 ## [0.3.1] - 2026-07-20
 
