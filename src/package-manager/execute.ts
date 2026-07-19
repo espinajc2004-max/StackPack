@@ -15,11 +15,17 @@ export type CommandRunner = (cmd: CommandDefinition) => Promise<CommandResult>;
  * official tools can show their own prompts.
  */
 export const realCommandRunner: CommandRunner = async (cmd) => {
-  const result = await execa(cmd.command, cmd.args, {
+  const debug = process.env.STACKPACK_DEBUG === "1";
+  if (debug)
+    console.error(`[debug] spawning: ${cmd.command} ${cmd.args.join(" ")} (cwd=${cmd.cwd})`);
+  const subprocess = execa(cmd.command, cmd.args, {
     cwd: cmd.cwd,
     stdio: cmd.interactive ? "inherit" : "pipe",
     reject: false,
   });
+  if (debug) console.error(`[debug] spawned pid: ${subprocess.pid}`);
+  const result = await subprocess;
+  if (debug) console.error(`[debug] resolved exitCode: ${result.exitCode}`);
   return {
     exitCode: typeof result.exitCode === "number" ? result.exitCode : 1,
     stdout: typeof result.stdout === "string" ? result.stdout : "",

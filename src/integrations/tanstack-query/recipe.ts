@@ -31,11 +31,13 @@ export const queryClient = new QueryClient();
     {
       path: `src/lib/query-provider.${jsxExt}`,
       contents: `import { QueryClientProvider } from "@tanstack/react-query";
-${devtools ? `import { ReactQueryDevtools } from "@tanstack/react-query-devtools";\n` : ""}import { queryClient } from "./query-client";
+${devtools ? `import { ReactQueryDevtools } from "@tanstack/react-query-devtools";\n` : ""}${
+        context.language === "typescript" ? `import type { ReactNode } from "react";\n` : ""
+      }import { queryClient } from "./query-client";
 
 ${
   context.language === "typescript"
-    ? "export function AppQueryProvider({ children }: { children: React.ReactNode }) {"
+    ? "export function AppQueryProvider({ children }: { children: ReactNode }) {"
     : "export function AppQueryProvider({ children }) {"
 }
   return (

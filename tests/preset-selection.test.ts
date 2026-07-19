@@ -42,7 +42,13 @@ describe("preset round-trip", () => {
     expect(preset).not.toBeNull();
     // The preset must pass full schema validation (what save/load enforce).
     const validated = presetSchema.parse(preset);
-    expect(validated.base.creator).toBe("vite-react");
+    expect(validated.base.creator).toBe("vite");
+    // Presets saved before the creator rename must still load.
+    const legacy = presetSchema.parse({
+      ...validated,
+      base: { ...validated.base, creator: "vite-react" },
+    });
+    expect(legacy.base.creator).toBe("vite");
     expect(validated.project).toEqual({
       framework: "react",
       buildTool: "vite",
