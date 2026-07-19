@@ -51,6 +51,63 @@ export async function runPresetsShow(name: string, options: { cwd?: string } = {
   }
 }
 
+/**
+ * Interactive preset browser used by the main menu: pick a preset to see its
+ * contents, optionally delete it, and always have a way back.
+ */
+export async function runPresetsBrowser(options: { cwd?: string } = {}): Promise<void> {
+  const projectRoot = options.cwd ?? process.cwd();
+  for (;;) {
+    const presets = await listPresets({ projectRoot });
+    if (presets.length === 0) {
+      p.log.info(
+        "No presets saved yet. Save one after an installation or with: stackpack save <name>",
+      );
+      return;
+    }
+
+    const choice = guard(
+      await p.select({
+        message: "Saved presets",
+        options: [
+          ...presets.map((preset, index) => ({
+            value: String(index),
+            label: preset.name,
+            hint: `${preset.scope} — ${preset.filePath}`,
+          })),
+          { value: "__back__", label: "Back to main menu" },
+        ],
+      }),
+    );
+    if (choice === "__back__") return;
+    const selected = presets[Number(choice)];
+    if (!selected) continue;
+
+    await runPresetsShow(selected.name, { cwd: projectRoot });
+
+    const action = guard(
+      await p.select({
+        message: `Preset "${selected.name}"`,
+        options: [
+          { value: "list", label: "Back to preset list" },
+          { value: "delete", label: "Delete this preset" },
+          { value: "menu", label: "Back to main menu" },
+        ],
+      }),
+    );
+    if (action === "menu") return;
+    if (action === "delete") {
+      const confirmed = guard(
+        await p.confirm({ message: `Delete preset "${selected.name}"?`, initialValue: false }),
+      );
+      if (confirmed) {
+        const location = await deletePreset(selected.name, { projectRoot });
+        p.log.success(`Deleted ${location.scope} preset: ${location.filePath}`);
+      }
+    }
+  }
+}
+
 export async function runPresetsDelete(
   name: string,
   options: { cwd?: string } = {},

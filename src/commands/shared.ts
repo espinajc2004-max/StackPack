@@ -12,6 +12,7 @@ import {
 import { detectProject } from "../engine/detect-project.js";
 import { verifyProject } from "../engine/verify-project.js";
 import { realCommandRunner, type CommandRunner } from "../package-manager/execute.js";
+import { resolveRegistryVersions } from "../package-manager/registry.js";
 import { restoreBackup } from "../project/backups.js";
 import { renderPlanReview } from "../ui/review.js";
 import { runVersionEditor } from "../dashboard/version-editor.js";
@@ -152,7 +153,22 @@ export async function reviewAndInstall(params: {
 
   for (;;) {
     const plan = buildInstallationPlan(params.context, params.selection);
-    p.note(renderPlanReview(plan), "Review StackPack setup");
+
+    const plannedPackages = [...plan.dependencies, ...plan.devDependencies];
+    let registryVersions: Map<string, string> | undefined;
+    if (plannedPackages.length > 0) {
+      const spinner = p.spinner();
+      spinner.start("Checking exact versions on the npm registry...");
+      registryVersions = await resolveRegistryVersions(
+        plannedPackages.map((dep) => ({ name: dep.name, version: dep.resolvedVersion })),
+      );
+      spinner.stop(
+        registryVersions.size > 0
+          ? "Exact versions resolved from the npm registry"
+          : "Could not reach the npm registry; showing version ranges only",
+      );
+    }
+    p.note(renderPlanReview(plan, registryVersions), "Review StackPack setup");
 
     if (
       plan.dependencies.length === 0 &&

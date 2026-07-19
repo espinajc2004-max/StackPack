@@ -1,12 +1,19 @@
 import { Command, Option } from "commander";
-import { guard, p } from "./ui/prompts.js";
+import pc from "picocolors";
+import { p } from "./ui/prompts.js";
 import { printError } from "./ui/errors.js";
 import { runNew } from "./commands/new.js";
 import { runAdd } from "./commands/add.js";
 import { runScan } from "./commands/scan.js";
-import { runSave } from "./commands/save.js";
+import { runSave, runSaveInteractive } from "./commands/save.js";
 import { runApply } from "./commands/apply.js";
-import { runPresetsDelete, runPresetsList, runPresetsShow } from "./commands/presets.js";
+import {
+  runPresetsBrowser,
+  runPresetsDelete,
+  runPresetsList,
+  runPresetsShow,
+} from "./commands/presets.js";
+import { CancelledError } from "./utils/errors.js";
 import { VERSION } from "./version.js";
 import type { PackageManager } from "./package-manager/types.js";
 
@@ -19,35 +26,54 @@ async function runMainMenu(): Promise<void> {
   p.intro("StackPack");
   p.log.message("Official project tooling with real-world integrations.");
   p.log.message("Presets stay on this device.");
+  p.log.message(pc.dim("Ctrl+C on any question brings you back to this menu instead of exiting."));
 
-  const choice = guard(
-    await p.select({
+  for (;;) {
+    const choice = await p.select({
       message: "What would you like to do?",
       options: [
         { value: "new", label: "Create a new project" },
         { value: "add", label: "Add integrations to the current project" },
         { value: "scan", label: "Scan the current project" },
+        {
+          value: "save",
+          label: "Save this project's stack as a preset",
+          hint: "integrations + all other dependencies",
+        },
         { value: "presets", label: "View saved presets" },
         { value: "exit", label: "Exit" },
       ],
-    }),
-  );
-
-  switch (choice) {
-    case "new":
-      await runNew(undefined, {});
-      return;
-    case "add":
-      await runAdd({});
-      return;
-    case "scan":
-      await runScan();
-      return;
-    case "presets":
-      await runPresetsList();
-      return;
-    default:
+    });
+    if (p.isCancel(choice) || choice === "exit") {
       p.outro("Goodbye.");
+      return;
+    }
+
+    try {
+      switch (choice) {
+        case "new":
+          await runNew(undefined, {});
+          break;
+        case "add":
+          await runAdd({});
+          break;
+        case "scan":
+          await runScan();
+          break;
+        case "save":
+          await runSaveInteractive();
+          break;
+        case "presets":
+          await runPresetsBrowser();
+          break;
+      }
+    } catch (error) {
+      if (error instanceof CancelledError) {
+        p.log.info("Cancelled — back to the main menu.");
+        continue;
+      }
+      printError(error);
+    }
   }
 }
 

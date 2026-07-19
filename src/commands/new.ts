@@ -8,7 +8,7 @@ import { detectProject } from "../engine/detect-project.js";
 import { createEmptySelection, type SetupSelection } from "../dashboard/state.js";
 import { dashboardInstallLoop } from "./flow.js";
 import { presetToSelection } from "./selection-utils.js";
-import { loadPreset } from "../storage/preset-store.js";
+import { listPresets, loadPreset } from "../storage/preset-store.js";
 import { loadConfig } from "../storage/config-store.js";
 import { realCommandRunner } from "../package-manager/execute.js";
 import { baseInstallCommand } from "../package-manager/commands.js";
@@ -91,13 +91,23 @@ async function runOfficialCreator(
   for (;;) {
     p.log.step(`Running the official ${creator.officialTool} creator: ${formatCommand(command)}`);
     const result = await realCommandRunner(command);
-    if (result.exitCode === 0) {
+    // Some creators exit with code 0 even when they abort (e.g. EPERM file
+    // locks from an IDE or antivirus on Windows), so verify real output too.
+    const generated = await fs
+      .access(path.join(process.cwd(), projectName, "package.json"))
+      .then(() => true)
+      .catch(() => false);
+    if (result.exitCode === 0 && generated) {
       p.log.success(`Official ${creator.name} project created`);
       return;
     }
+    const reason =
+      result.exitCode === 0
+        ? "reported success but no package.json was generated — a file lock from an IDE or antivirus may have interrupted it"
+        : `exit code ${result.exitCode}`;
     const choice = guard(
       await p.select({
-        message: `Official project creator failed (${creator.officialTool}, exit code ${result.exitCode}). The destination folder may contain partial files.`,
+        message: `Official project creator failed (${creator.officialTool}, ${reason}). The destination folder may contain partial files.`,
         options: [
           { value: "retry", label: "Retry" },
           { value: "keep", label: "Keep partial project and exit" },
@@ -130,7 +140,10 @@ async function ensureDependenciesInstalled(
   } catch {
     // node_modules is missing; run the one combined install now.
   }
-  p.log.step(`Installing project dependencies: ${packageManager} install`);
+  p.log.info(
+    "No integrations are being added. The base project's own dependencies were deferred earlier, so they install now — otherwise the app could not run.",
+  );
+  p.log.step(`Installing base project dependencies: ${packageManager} install`);
   const result = await realCommandRunner(baseInstallCommand(packageManager, destination));
   if (result.exitCode !== 0) {
     p.log.warn(
@@ -150,6 +163,40 @@ export async function runNew(
   if (options.preset) {
     const loaded = await loadPreset(options.preset, { projectRoot: process.cwd() });
     preset = loaded.preset;
+  } else {
+    // Offer saved presets so a whole stack can be reused without CLI flags.
+    const available = await listPresets({ projectRoot: process.cwd() });
+    if (available.length > 0) {
+      const choice = guard(
+        await p.select({
+          message: "Start from a saved preset?",
+          options: [
+            { value: "__fresh__", label: "No, start fresh", hint: "choose everything yourself" },
+            ...available.map((entry, index) => ({
+              value: String(index),
+              label: entry.name,
+              hint: entry.scope,
+            })),
+          ],
+        }),
+      );
+      if (choice !== "__fresh__") {
+        const entry = available[Number(choice)];
+        if (entry) {
+          const loaded = await loadPreset(entry.name, { projectRoot: process.cwd() });
+          preset = loaded.preset;
+        }
+      }
+    }
+  }
+
+  if (preset) {
+    const customEntries = [
+      ...Object.entries(preset.customPackages.dependencies),
+      ...Object.entries(preset.customPackages.devDependencies).map(
+        ([name, version]) => [name, `${version} (dev)`] as const,
+      ),
+    ];
     p.note(
       [
         `Preset\n  ${preset.displayName ?? preset.name}`,
@@ -161,8 +208,16 @@ export async function runNew(
             ? preset.integrations.map((i) => `  ${i.id}`).join("\n")
             : "  (none)"
         }`,
+        `Other packages\n${
+          customEntries.length > 0
+            ? customEntries.map(([name, version]) => `  ${name}@${version}`).join("\n")
+            : "  (none)"
+        }`,
       ].join("\n\n"),
-      "Preset detected",
+      "Preset",
+    );
+    p.log.info(
+      "Everything above will be shown again with exact versions on the review screen before anything installs.",
     );
     const proceed = guard(await p.confirm({ message: "Continue?", initialValue: true }));
     if (!proceed) throw new CancelledError();
@@ -170,20 +225,26 @@ export async function runNew(
 
   const { name, destination } = await askProjectName(projectNameArg);
 
-  const creator = preset
-    ? getCreator(preset.base.creator)
-    : getCreator(
-        guard(
-          await p.select({
-            message: "Choose a base project",
-            options: allCreators.map((adapter) => ({
-              value: adapter.id,
-              label: adapter.name,
-              hint: `official ${adapter.officialTool}`,
-            })),
-          }),
-        ) as CreatorAdapter["id"],
-      );
+  let creator: CreatorAdapter;
+  if (preset) {
+    creator = getCreator(preset.base.creator);
+  } else {
+    const baseChoice = guard(
+      await p.select({
+        message: "Choose a base project",
+        options: [
+          ...allCreators.map((adapter) => ({
+            value: adapter.id as string,
+            label: adapter.name,
+            hint: `official ${adapter.officialTool}`,
+          })),
+          { value: "__back__", label: "Back", hint: "leave without creating anything" },
+        ],
+      }),
+    );
+    if (baseChoice === "__back__") throw new CancelledError();
+    creator = getCreator(baseChoice as CreatorAdapter["id"]);
+  }
 
   const config = await loadConfig();
   const packageManager: PackageManager =

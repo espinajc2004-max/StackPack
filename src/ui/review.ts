@@ -7,8 +7,23 @@ function section(title: string, lines: string[]): string[] {
   return ["", pc.bold(title), ...lines.map((line) => `  ${line}`)];
 }
 
+function dependencyLine(
+  dep: { name: string; resolvedVersion: string; requestedBy: string[] },
+  registryVersions?: Map<string, string>,
+): string {
+  const exact = registryVersions?.get(dep.name);
+  const version =
+    exact && exact !== dep.resolvedVersion
+      ? `${dep.name}@${dep.resolvedVersion} ${pc.green(`→ ${exact}`)}`
+      : `${dep.name}@${pc.green(dep.resolvedVersion)}`;
+  return `${pc.green("+")} ${version} ${pc.dim(`(${dep.requestedBy.join(", ")})`)}`;
+}
+
 /** Renders the full installation plan for the review screen. */
-export function renderPlanReview(plan: InstallationPlan): string {
+export function renderPlanReview(
+  plan: InstallationPlan,
+  registryVersions?: Map<string, string>,
+): string {
   const lines: string[] = [];
 
   lines.push(pc.bold("Base project"));
@@ -25,19 +40,13 @@ export function renderPlanReview(plan: InstallationPlan): string {
   lines.push(
     ...section(
       "Dependencies",
-      plan.dependencies.map(
-        (dep) =>
-          `${pc.green("+")} ${dep.name}@${dep.resolvedVersion} ${pc.dim(`(${dep.requestedBy.join(", ")})`)}`,
-      ),
+      plan.dependencies.map((dep) => dependencyLine(dep, registryVersions)),
     ),
   );
   lines.push(
     ...section(
       "Development dependencies",
-      plan.devDependencies.map(
-        (dep) =>
-          `${pc.green("+")} ${dep.name}@${dep.resolvedVersion} ${pc.dim(`(${dep.requestedBy.join(", ")})`)}`,
-      ),
+      plan.devDependencies.map((dep) => dependencyLine(dep, registryVersions)),
     ),
   );
 

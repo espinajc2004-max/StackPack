@@ -1,3 +1,4 @@
+import pc from "picocolors";
 import { guard, p } from "../ui/prompts.js";
 import type { IntegrationAvailability } from "../engine/filter-integrations.js";
 import type { IntegrationRecipe } from "../integrations/types.js";
@@ -14,7 +15,12 @@ export function describeInstallation(recipe: IntegrationRecipe): string {
     const all = [...recipe.installation.dependencies, ...recipe.installation.devDependencies];
     if (all.length > 0) {
       lines.push(
-        `Packages\n${all.map((pkg) => `  ${pkg.name}${pkg.reason ? ` — ${pkg.reason}` : ""}`).join("\n")}`,
+        `Packages\n${all
+          .map(
+            (pkg) =>
+              `  ${pkg.name}@${pc.green(pkg.version)}${pkg.reason ? ` — ${pkg.reason}` : ""}`,
+          )
+          .join("\n")}`,
       );
     }
   } else {
@@ -49,16 +55,22 @@ export async function runSingleSelectCategory(params: {
       message: params.prompt,
       initialValue: params.current?.id ?? visible[0]?.recipe.id,
       options: [
-        ...visible.map((availability) => ({
-          value: availability.recipe.id,
-          label: availability.recipe.name,
-          hint:
+        ...visible.map((availability) => {
+          const isCurrent = params.current?.id === availability.recipe.id;
+          const hint =
             availability.compatibility === "already-installed"
               ? `already installed${availability.detection.installedVersion ? ` at ${availability.detection.installedVersion}` : ""}`
               : availability.compatibility === "partially-configured"
                 ? "installed but not fully configured"
-                : availability.recipe.installationSummary,
-        })),
+                : availability.recipe.installationSummary;
+          return {
+            value: availability.recipe.id,
+            label: isCurrent
+              ? `${availability.recipe.name} ${pc.green("✓")}`
+              : availability.recipe.name,
+            hint: isCurrent ? pc.green("currently selected") : hint,
+          };
+        }),
         { value: "__none__", label: "None", hint: "Remove the current selection" },
         { value: "__return__", label: "Return without changes" },
       ],
@@ -100,17 +112,8 @@ export async function runSingleSelectCategory(params: {
       )
     : {};
 
-  const confirm = guard(
-    await p.select({
-      message: "Save this selection?",
-      options: [
-        { value: "save", label: "Save selection and return" },
-        { value: "remove", label: "Remove selection" },
-        { value: "cancel", label: "Return without changes" },
-      ],
-    }),
-  );
-  if (confirm === "remove") return { kind: "removed" };
-  if (confirm === "cancel") return { kind: "unchanged" };
+  // Picking an integration selects it right away; "None" in the category
+  // list is the way to undo a selection.
+  p.log.success(`${recipe.name} selected`);
   return { kind: "selected", selection: { id: recipe.id, options } };
 }
