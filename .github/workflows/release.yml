@@ -1,0 +1,27 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing (OIDC) needs a recent npm.
+      - run: npm install -g npm@latest
+      - run: npm ci
+      # prepublishOnly runs the full check (typecheck, lint, format, tests, build)
+      # before anything is uploaded; the tag is never published if it fails.
+      - run: npm publish
