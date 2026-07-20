@@ -6,7 +6,7 @@ on:
       - "v*"
 
 permissions:
-  contents: read
+  contents: write
   id-token: write
 
 jobs:
@@ -25,3 +25,7 @@ jobs:
       # prepublishOnly runs the full check (typecheck, lint, format, tests, build)
       # before anything is uploaded; the tag is never published if it fails.
       - run: npm publish
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
