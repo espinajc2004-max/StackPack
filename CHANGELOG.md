@@ -4,6 +4,12 @@ All notable changes to StackPack are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.3.4] - 2026-07-20
+
+### Added
+
+- Automated releases: pushing a version tag now runs the full check suite in GitHub Actions and publishes to npm with provenance (trusted publishing, no tokens).
+
 ## [0.3.3] - 2026-07-20
 
 ### Added
