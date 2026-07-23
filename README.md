@@ -11,6 +11,32 @@ Official tooling first · Real-world integrations · Presets stay on your device
 
 ---
 
+## What's new in 0.3.5
+
+### From 0.3.4
+
+- Improved project dependency scanning when creating presets.
+- Choose which detected integrations and dependencies are saved instead of
+  automatically including everything.
+- Custom npm dependencies are preserved when saving and reusing presets.
+- Clearer **Additional npm Packages** guidance during project creation.
+- Added expanded `stackpack --help` output with available commands and common
+  workflows.
+- Improved handling of generated UI dependencies such as individual Radix
+  packages.
+- Added automatic retries for interrupted npm installations caused by transient
+  network failures.
+- Fixed post-install verification so incomplete official initializer runs are
+  not reported as successful.
+- Normalized the npm executable path to prevent package publishing warnings.
+- Expanded unit, integration, CLI, release-matrix, and end-to-end test coverage.
+- Verified StackPack against a real Next.js project with a large dependency
+  set.
+
+See the [changelog](CHANGELOG.md#035---2026-07-23) and
+[0.3.5 release validation](docs/RELEASE_VALIDATION_0.3.5.md) for complete
+details.
+
 ## Quick start
 
 Run it anywhere, no install needed:
