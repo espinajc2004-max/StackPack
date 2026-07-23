@@ -61,6 +61,20 @@ export type ProjectPresetScan = {
   categoryCollisions: string[];
 };
 
+export type PackageSelectionMode = "all" | "choose" | "none";
+
+export function scannedPackageKey(pkg: CustomPackage): string {
+  return `${pkg.dependencyType}:${pkg.name}`;
+}
+
+export function filterScannedPackages(
+  packages: CustomPackage[],
+  selectedKeys: Iterable<string>,
+): CustomPackage[] {
+  const selected = new Set(selectedKeys);
+  return packages.filter((pkg) => selected.has(scannedPackageKey(pkg)));
+}
+
 /**
  * Every dependency that is neither owned by a detected integration nor part
  * of the base scaffold is captured as a custom package, so the preset
@@ -139,13 +153,82 @@ export function scanProjectForPreset(context: ProjectContext): ProjectPresetScan
   return { selection, availabilities, skippedPackages: skipped, categoryCollisions };
 }
 
+async function chooseScannedPackages(
+  packages: CustomPackage[],
+  requestedMode?: PackageSelectionMode,
+): Promise<CustomPackage[]> {
+  if (packages.length === 0) return [];
+
+  const mode =
+    requestedMode ??
+    (guard(
+      await p.select({
+        message: `How should ${packages.length} other detected package(s) be saved?`,
+        options: [
+          {
+            value: "choose",
+            label: "Choose packages",
+            hint: "include only what this preset really needs",
+          },
+          {
+            value: "all",
+            label: "Save all packages",
+            hint: "preserve the previous full-scan behavior",
+          },
+          {
+            value: "none",
+            label: "Detected integrations only",
+            hint: "do not save any other dependencies",
+          },
+        ],
+      }),
+    ) as PackageSelectionMode);
+
+  if (mode === "all") return packages;
+  if (mode === "none") return [];
+
+  const dependencyOptions = packages
+    .filter((pkg) => pkg.dependencyType === "dependency")
+    .map((pkg) => ({
+      value: scannedPackageKey(pkg),
+      label: `${pkg.name}@${pkg.version}`,
+      hint: "dependency",
+    }));
+  const devDependencyOptions = packages
+    .filter((pkg) => pkg.dependencyType === "devDependency")
+    .map((pkg) => ({
+      value: scannedPackageKey(pkg),
+      label: `${pkg.name}@${pkg.version}`,
+      hint: "devDependency",
+    }));
+  const groups: Record<string, typeof dependencyOptions> = {};
+  if (dependencyOptions.length > 0) groups.Dependencies = dependencyOptions;
+  if (devDependencyOptions.length > 0) groups["Development dependencies"] = devDependencyOptions;
+
+  const selectedKeys = guard(
+    await p.groupMultiselect({
+      message: "Select packages to include (space to toggle, enter to confirm)",
+      options: groups,
+      initialValues: [],
+      required: false,
+      selectableGroups: true,
+    }),
+  );
+  return filterScannedPackages(packages, selectedKeys);
+}
+
 /**
  * Saves the current project's detected setup as a preset: recognized
- * integrations plus every other dependency as custom packages.
+ * integrations plus the user's chosen portable dependencies as custom packages.
  */
 export async function runSave(
   name: string,
-  options: { local?: boolean; global?: boolean; cwd?: string },
+  options: {
+    local?: boolean;
+    global?: boolean;
+    cwd?: string;
+    packageSelection?: PackageSelectionMode;
+  },
 ): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
   p.intro("StackPack — save preset");
@@ -169,9 +252,27 @@ export async function runSave(
   }
   if (scan.categoryCollisions.length > 0) {
     p.log.warn(
-      `These additional detected integrations share a single-choice dashboard category and were saved as custom packages instead: ${scan.categoryCollisions.join(", ")}.`,
+      `These additional detected integrations share a single-choice dashboard category, so their dependencies are listed under other packages: ${scan.categoryCollisions.join(", ")}.`,
     );
   }
+
+  p.note(
+    [
+      `Detected integrations\n  ${
+        selectedRecipes(selection)
+          .map(({ recipe }) => recipe.name)
+          .join(", ") || "(none)"
+      }`,
+      `Other portable packages\n  ${selection.customPackages.length}`,
+      "Detected integrations are always included. You control the other packages next.",
+    ].join("\n\n"),
+    "Scanned preset contents",
+  );
+
+  selection.customPackages = await chooseScannedPackages(
+    selection.customPackages,
+    options.packageSelection,
+  );
 
   const scope: "global" | "local" = options.local ? "local" : "global";
   const preset = buildPresetFromSelection({ name, scope, context, selection });

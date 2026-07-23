@@ -119,6 +119,8 @@ stackpack add --dry-run            # full plan, zero changes
 stackpack add --package-manager pnpm
 stackpack scan                     # detect stack + installed integrations
 stackpack save <name> [--local|--global]
+stackpack save <name> --all-packages       # keep every portable dependency
+stackpack save <name> --integrations-only  # omit all other dependencies
 stackpack apply <name> [--dry-run] # apply a preset to the current project
 stackpack presets list
 stackpack presets show <name>
@@ -130,6 +132,13 @@ stackpack --no-color
 ## The dashboard
 
 After the base project exists, StackPack does not walk you through a fixed wizard. It opens a jumpable dashboard: enter any category, select or remove an integration, come back later, edit versions, and review only when you are ready. Selections persist in memory until you install or cancel. Pressing Esc inside a category goes back one screen without losing your selections; only Esc at the dashboard itself cancels the setup.
+
+When saving a scanned project as a preset, StackPack keeps recognized
+integrations and then lets you choose the other runtime and development
+packages to include. This makes it easy to omit generated UI dependencies such
+as individual Radix packages. Use `--all-packages` to keep the previous
+full-scan behavior without a prompt, or `--integrations-only` to omit every
+other package.
 
 ## Privacy model
 

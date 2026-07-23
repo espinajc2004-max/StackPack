@@ -13,6 +13,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Scan and save now share one validated classification path. Non-portable
   dependency specifiers are reported and skipped, and same-category integration
   collisions are preserved as custom packages.
+- Preset saving now offers a grouped dependency picker, so scanned runtime and
+  development packages can be selectively included. `--all-packages` and
+  `--integrations-only` provide non-interactive choices.
 
 ### Fixed
 

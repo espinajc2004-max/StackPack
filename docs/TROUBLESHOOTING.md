@@ -40,7 +40,8 @@ first group installed; the operation record makes that state explicit.
 - recognized integrations are saved as integrations;
 - the version ranges found in the source project are saved as overrides, so a
   scanned preset does not silently replace them with a recipe's `latest`;
-- all other portable npm dependencies are saved as custom packages;
+- all other portable npm dependencies are presented in runtime and development
+  groups, and only the packages the user selects are saved as custom packages;
 - local paths, Git URLs, workspace references, malformed names, and other
   non-portable specifiers are reported and skipped instead of making the whole
   preset fail validation.
@@ -48,7 +49,13 @@ first group installed; the operation record makes that state explicit.
 The dashboard currently permits one integration in most categories. If a
 scanned project contains multiple integrations from the same single-choice
 category, StackPack keeps the first recognized integration and preserves the
-others as custom packages. The scan output reports this conversion.
+others as selectable custom packages. The scan output reports this conversion.
+
+The package picker starts with nothing selected, making a small reusable preset
+easy to create. Choose **Save all packages** for the previous behavior. CLI
+automation can bypass the prompt with `stackpack save <name> --all-packages` or
+save only recognized integrations with
+`stackpack save <name> --integrations-only`.
 
 Presets are based on `package.json`, which describes the intended project
 stack. A package present only in `node_modules` is intentionally ignored, and

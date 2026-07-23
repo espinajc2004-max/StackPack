@@ -14,7 +14,7 @@ import {
   runPresetsList,
   runPresetsShow,
 } from "./commands/presets.js";
-import { CancelledError } from "./utils/errors.js";
+import { CancelledError, StackPackError } from "./utils/errors.js";
 import { getUpdateNotice } from "./utils/update-check.js";
 import { VERSION } from "./version.js";
 import type { PackageManager } from "./package-manager/types.js";
@@ -45,7 +45,7 @@ async function runMainMenu(): Promise<void> {
         {
           value: "save",
           label: "Save this project's stack as a preset",
-          hint: "integrations + all other dependencies",
+          hint: "scan integrations, then choose which other packages to keep",
         },
         { value: "presets", label: "View saved presets" },
         { value: "exit", label: "Exit" },
@@ -127,13 +127,37 @@ export async function runCli(argv: string[]): Promise<void> {
 
   program
     .command("save")
-    .description("Save the current project's detected setup as a preset")
+    .description("Scan the current project and choose what to save as a preset")
     .argument("<preset-name>", "name for the preset")
     .option("--local", "store the preset inside this project (.stackpack/)")
     .option("--global", "store the preset in your home directory (default)")
-    .action(async (name: string, options: { local?: boolean; global?: boolean }) => {
-      await runSave(name, options);
-    });
+    .option("--all-packages", "include every portable dependency without asking")
+    .option("--integrations-only", "save integrations without other dependencies")
+    .action(
+      async (
+        name: string,
+        options: {
+          local?: boolean;
+          global?: boolean;
+          allPackages?: boolean;
+          integrationsOnly?: boolean;
+        },
+      ) => {
+        if (options.allPackages && options.integrationsOnly) {
+          throw new StackPackError(
+            "Choose either --all-packages or --integrations-only, not both.",
+          );
+        }
+        await runSave(name, {
+          ...options,
+          packageSelection: options.allPackages
+            ? "all"
+            : options.integrationsOnly
+              ? "none"
+              : undefined,
+        });
+      },
+    );
 
   program
     .command("apply")
