@@ -14,7 +14,7 @@
     "url": "https://github.com/espinajc2004-max/StackPack/issues"
   },
   "bin": {
-    "stackpack": "./dist/cli.js"
+    "stackpack": "dist/cli.js"
   },
   "files": [
     "dist"

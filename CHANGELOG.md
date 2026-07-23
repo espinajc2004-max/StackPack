@@ -52,6 +52,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Post-install verification now fails when an official initializer exits
   without leaving a detectable integration, preventing an aborted shadcn or
   Playwright setup from being reported as successfully installed.
+- The npm executable path is stored in its normalized form, so `npm publish`
+  no longer auto-corrects the `stackpack` bin entry.
 
 ## [0.3.4] - 2026-07-20
 
