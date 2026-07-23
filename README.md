@@ -137,6 +137,10 @@ stackpack presets delete <name>
 stackpack --no-color
 ```
 
+Run `stackpack --help` to see a compact set of ready-to-copy workflows without
+opening this documentation. Use `stackpack <command> --help` for the valid
+arguments and options of one command.
+
 ## The dashboard
 
 After the base project exists, StackPack does not walk you through a fixed wizard. It opens a jumpable dashboard: enter any category, select or remove an integration, come back later, edit versions, and review only when you are ready. Selections persist in memory until you install or cancel. Pressing Esc inside a category goes back one screen without losing your selections; only Esc at the dashboard itself cancels the setup.

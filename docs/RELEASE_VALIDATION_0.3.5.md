@@ -12,7 +12,7 @@ Environment:
 Final repository gate:
 
 - 18 Vitest files passed;
-- 86 automated tests passed;
+- 87 automated tests passed;
 - TypeScript, ESLint, Prettier, and production CLI build passed;
 - npm package dry-run reported `stackpack-cli@0.3.5`;
 - StackPack's own `npm audit` reported zero vulnerabilities.
@@ -33,6 +33,7 @@ release matrix that covers:
 - customized Next.js creator flags;
 - shadcn and Playwright delegated initializer commands for every package
   manager;
+- workflow examples exposed directly by `stackpack --help`;
 - failed and successful post-install detection for official initializers.
 
 The existing suite also covers project and lockfile detection, dry runs,
@@ -119,7 +120,9 @@ test passed and the production Vite build completed.
 
 The npm tarball was installed into an isolated prefix and its binary was used
 for version, help, save-command help, and scan smoke tests. The CLI reported
-version 0.3.5.
+version 0.3.5. The main help output lists copyable examples for creating,
+scanning, saving, applying, and express-installing projects, plus every preset
+management command and the command-specific help pattern.
 
 Command-level validation also covered:
 

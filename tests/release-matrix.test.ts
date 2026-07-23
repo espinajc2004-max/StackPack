@@ -12,6 +12,7 @@ import type { PackageManager } from "../src/package-manager/types.js";
 import type { ProjectContext } from "../src/schemas/project-context.js";
 import { resolveInsideRoot } from "../src/project/safe-paths.js";
 import { parsePackageSpecifier } from "../src/utils/package-specifier.js";
+import { CLI_HELP_EPILOG } from "../src/program.js";
 
 const packageManagers: PackageManager[] = ["npm", "pnpm", "yarn", "bun"];
 const root = path.resolve("release-matrix-fixture");
@@ -128,6 +129,24 @@ describe("0.3.5 release recipe matrix", () => {
 });
 
 describe("0.3.5 release package-manager and creator matrix", () => {
+  it("documents every public workflow directly in stackpack --help", () => {
+    for (const command of [
+      "stackpack new my-app",
+      "stackpack install my-stack my-app",
+      "stackpack add",
+      "stackpack scan",
+      "stackpack save my-stack",
+      "stackpack apply my-stack",
+      "stackpack presets list",
+      "stackpack presets show",
+      "stackpack presets edit",
+      "stackpack presets delete",
+      "stackpack <command> --help",
+    ]) {
+      expect(CLI_HELP_EPILOG).toContain(command);
+    }
+  });
+
   it("builds runtime, development, and base install commands for every package manager", () => {
     for (const packageManager of packageManagers) {
       const runtime = packageInstallCommand(

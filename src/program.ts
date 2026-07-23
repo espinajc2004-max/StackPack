@@ -19,6 +19,40 @@ import { getUpdateNotice } from "./utils/update-check.js";
 import { VERSION } from "./version.js";
 import type { PackageManager } from "./package-manager/types.js";
 
+export const CLI_HELP_EPILOG = `
+Common workflows:
+  stackpack
+      Open the interactive menu.
+  stackpack new my-app
+      Create a project with an official creator, then choose integrations.
+  stackpack new my-app --preset my-stack
+      Create a project and start with a saved preset.
+  stackpack install my-stack my-app
+      Create and configure a project from a preset in one express flow.
+  stackpack add
+      Add integrations to the project in the current directory.
+  stackpack add --dry-run
+      Review commands and files without changing the project.
+  stackpack scan
+      Show the detected framework, packages, and known integrations.
+  stackpack save my-stack --local
+      Save a project-local preset after choosing portable packages.
+  stackpack save my-stack --all-packages
+      Save every portable dependency without the package picker.
+  stackpack apply my-stack --dry-run
+      Preview a preset against the current project before installing.
+
+Preset management:
+  stackpack presets list
+  stackpack presets show my-stack
+  stackpack presets edit my-stack
+  stackpack presets delete my-stack
+
+More help:
+  stackpack <command> --help
+  stackpack presets --help
+`;
+
 const packageManagerOption = new Option(
   "--package-manager <manager>",
   "package manager to use",
@@ -92,7 +126,8 @@ export async function runCli(argv: string[]): Promise<void> {
       "Local-first terminal integration builder. Official project tooling with real-world integrations; presets stay on this device.",
     )
     .version(VERSION)
-    .option("--no-color", "disable colored output");
+    .option("--no-color", "disable colored output")
+    .addHelpText("after", CLI_HELP_EPILOG);
 
   program
     .command("new")

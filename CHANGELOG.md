@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A release matrix now validates all 23 recipes across their supported
   framework and language shapes, plus creator, installer, and official
   initializer command contracts for npm, pnpm, yarn, and bun.
+- `stackpack --help` now includes ready-to-copy examples for project creation,
+  adding and scanning integrations, preset save/apply flows, express install,
+  dry runs, and every preset-management command.
 
 ### Changed
 
