@@ -180,3 +180,53 @@ integration:
 
 This verifies that a package entered manually is retained in the saved preset
 and installed when that preset is used for a new project.
+
+## Vitest integration exits with no test files
+
+### Problem discovered
+
+A full fresh-project test of every curated integration found that the Vitest
+recipe installed and configured Vitest correctly but did not create a test
+file. Running the generated `npm test -- --run` command therefore exited with
+code 1 and reported `No test files found`.
+
+### Fix
+
+The recipe now creates `src/test/stackpack.smoke.test.tsx` for React component
+testing or `src/test/stackpack.smoke.test.ts` for utility testing. The component
+version renders a button with React Testing Library and verifies the generated
+JSDOM and jest-dom setup. The utility version verifies the basic Vitest runner.
+Both variants import their Vitest APIs explicitly so TypeScript project builds
+do not depend on global test types.
+
+### Validation
+
+The generated component smoke test is run in the release end-to-end Vite
+project with `npm test -- --run`. The project is also compiled with
+`tsc -b && vite build`, which type-checks the generated test before the
+production bundle is created.
+
+## Official initializer exits without installing
+
+### Problem discovered
+
+During unattended release testing, the shadcn CLI displayed its first-run
+`components.json` question, received no terminal input, and exited with code 0
+without creating the file. StackPack previously treated any zero exit code from
+an official initializer as success. This could produce a false successful
+result after an initializer was aborted or ended without its expected output.
+
+### Fix
+
+Post-install verification now runs the selected recipe's detection logic for
+every official initializer. shadcn must be detectable through
+`components.json`; Playwright must be detectable through its package or
+configuration. A missing or partial result is reported as a failed verification
+even if the external CLI returned exit code 0.
+
+### Validation
+
+Regression tests cover both sides of the result: a simulated zero exit without
+`components.json` fails, while the same project passes after that initializer
+output exists. The real shadcn and Playwright initializers were then run in the
+release projects and both projects completed their production builds.

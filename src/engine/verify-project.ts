@@ -61,6 +61,27 @@ export async function verifyProject(
         },
   );
 
+  for (const integration of plan.integrations) {
+    if (!integration.plan.initializer) continue;
+    const detected = integration.recipe.detectInstalled(context);
+    const installed = detected.status === "installed" || detected.status === "fully-configured";
+    checks.push(
+      installed
+        ? {
+            name: `Official initializer: ${integration.recipe.name}`,
+            status: "passed",
+            detail: detected.details,
+          }
+        : {
+            name: `Official initializer: ${integration.recipe.name}`,
+            status: "failed",
+            detail:
+              detected.details ??
+              `The official initializer finished but ${integration.recipe.name} was not detected afterward.`,
+          },
+    );
+  }
+
   const configFiles = ["package.json", "tsconfig.json"].filter((file) =>
     context.detectedFiles.includes(file),
   );

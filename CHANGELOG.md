@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Automated coverage now verifies that an additional npm package survives setup
   selection, preset serialization, preset loading, dependency planning, and
   installation planning for both runtime and development dependencies.
+- A release matrix now validates all 23 recipes across their supported
+  framework and language shapes, plus creator, installer, and official
+  initializer command contracts for npm, pnpm, yarn, and bun.
 
 ### Changed
 
@@ -40,6 +43,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   downloaded UI component packages, into the saved preset.
 - Packages belonging to an excluded detected integration are no longer silently
   retained as that integration; they become individually selectable packages.
+- The Vitest integration now creates a passing smoke test, so its generated
+  `test` script no longer exits with "No test files found" immediately after
+  installation.
+- Post-install verification now fails when an official initializer exits
+  without leaving a detectable integration, preventing an aborted shadcn or
+  Playwright setup from being reported as successfully installed.
 
 ## [0.3.4] - 2026-07-20
 

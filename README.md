@@ -189,6 +189,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution process.
 
 For network-install failures and details about how full-project scans become
 presets, see [Troubleshooting installs and project scans](docs/TROUBLESHOOTING.md).
+The complete real-project and automated release test record for this version is
+available in [StackPack 0.3.5 release validation](docs/RELEASE_VALIDATION_0.3.5.md).
 
 ## License
 

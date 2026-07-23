@@ -74,6 +74,7 @@ describe("buildInstallationPlan", () => {
         "src/lib/query-provider.tsx",
         "vitest.config.ts",
         "src/test/setup.ts",
+        "src/test/stackpack.smoke.test.tsx",
       ]),
     );
     expect(plan.filesToModify).toContain("package.json");
@@ -108,6 +109,34 @@ describe("buildInstallationPlan", () => {
     const config = plan.filesToCreate.find((f) => f.path === "vitest.config.ts");
     expect(config?.contents).toContain("mergeConfig");
     expect(config?.contents).toContain("./vite.config");
+  });
+
+  it("generates a runnable smoke test for component and utility test targets", async () => {
+    const dir = await tempDir();
+    await writeViteReactProject(dir);
+    const context = await detectProject(dir);
+
+    const components = createEmptySelection();
+    components.testing.push({ id: "vitest-react", options: { testTarget: "components" } });
+    const componentPlan = buildInstallationPlan(context, components);
+    const componentTest = componentPlan.filesToCreate.find((file) =>
+      file.path.includes("stackpack.smoke.test"),
+    );
+    expect(componentTest?.path).toBe("src/test/stackpack.smoke.test.tsx");
+    expect(componentTest?.contents).toContain("@testing-library/react");
+    expect(componentTest?.contents).toContain("toBeInTheDocument");
+    expect(componentPlan.notes).toContain(
+      "A passing React Testing Library smoke test was generated. Run it with: npm run test -- --run",
+    );
+
+    const utilities = createEmptySelection();
+    utilities.testing.push({ id: "vitest-react", options: { testTarget: "utils" } });
+    const utilityPlan = buildInstallationPlan(context, utilities);
+    const utilityTest = utilityPlan.filesToCreate.find((file) =>
+      file.path.includes("stackpack.smoke.test"),
+    );
+    expect(utilityTest?.path).toBe("src/test/stackpack.smoke.test.ts");
+    expect(utilityTest?.contents).toContain("expect(1 + 1).toBe(2)");
   });
 
   it("surfaces version conflicts between recipe and custom package", async () => {

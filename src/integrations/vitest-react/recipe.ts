@@ -84,6 +84,30 @@ function setupFile(context: ProjectContext): PlannedFile {
   };
 }
 
+function smokeTestFile(context: ProjectContext, components: boolean): PlannedFile {
+  const ext = sourceExtension(context, components);
+  return {
+    path: `src/test/stackpack.smoke.test.${ext}`,
+    contents: components
+      ? `import { render, screen } from "@testing-library/react";
+import { expect, it } from "vitest";
+
+it("runs React component tests", () => {
+  render(<button type="button">StackPack test setup works</button>);
+  expect(screen.getByRole("button", { name: "StackPack test setup works" })).toBeInTheDocument();
+});
+`
+      : `import { expect, it } from "vitest";
+
+it("runs utility tests", () => {
+  expect(1 + 1).toBe(2);
+});
+`,
+    description:
+      "Passing smoke test that verifies the generated Vitest setup and keeps npm test green.",
+  };
+}
+
 export const vitestReactRecipe: IntegrationRecipe = {
   id: "vitest-react",
   recipeVersion: 1,
@@ -124,16 +148,22 @@ export const vitestReactRecipe: IntegrationRecipe = {
   },
   createPlan(context, options) {
     const components = options.testTarget !== "utils";
+    const testCommand = `${context.packageManager} run test -- --run`;
     const packages = components ? [vitestPackage, ...componentTestingPackages] : [vitestPackage];
-    const filesToCreate: PlannedFile[] = [vitestConfigFile(context, components)];
+    const filesToCreate: PlannedFile[] = [
+      vitestConfigFile(context, components),
+      smokeTestFile(context, components),
+    ];
     if (components) filesToCreate.push(setupFile(context));
     return {
       packages,
       filesToCreate,
       scripts: [{ name: "test", command: "vitest" }],
       postInstallNotes: components
-        ? ["Run your first component test with: npm run test"]
-        : ["Vitest is configured for utility tests only."],
+        ? [`A passing React Testing Library smoke test was generated. Run it with: ${testCommand}`]
+        : [
+            `Vitest is configured for utility tests and includes a passing smoke test. Run it with: ${testCommand}`,
+          ],
     };
   },
 };
