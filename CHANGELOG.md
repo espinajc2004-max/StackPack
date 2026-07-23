@@ -16,6 +16,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Preset saving now offers a grouped dependency picker, so scanned runtime and
   development packages can be selectively included. `--all-packages` and
   `--integrations-only` provide non-interactive choices.
+- Detected integrations can now be deselected before package selection. Their
+  installed packages return to the ordinary package picker, and
+  `--exclude-integration <ids...>` supports repeatable automation.
 
 ### Fixed
 

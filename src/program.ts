@@ -133,6 +133,10 @@ export async function runCli(argv: string[]): Promise<void> {
     .option("--global", "store the preset in your home directory (default)")
     .option("--all-packages", "include every portable dependency without asking")
     .option("--integrations-only", "save integrations without other dependencies")
+    .option(
+      "--exclude-integration <ids...>",
+      "exclude detected integration ids (for example: shadcn)",
+    )
     .action(
       async (
         name: string,
@@ -141,6 +145,7 @@ export async function runCli(argv: string[]): Promise<void> {
           global?: boolean;
           allPackages?: boolean;
           integrationsOnly?: boolean;
+          excludeIntegration?: string[];
         },
       ) => {
         if (options.allPackages && options.integrationsOnly) {
@@ -155,6 +160,8 @@ export async function runCli(argv: string[]): Promise<void> {
             : options.integrationsOnly
               ? "none"
               : undefined,
+          integrationSelection: options.allPackages || options.integrationsOnly ? "all" : undefined,
+          excludedIntegrationIds: options.excludeIntegration,
         });
       },
     );

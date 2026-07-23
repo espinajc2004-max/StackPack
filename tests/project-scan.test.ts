@@ -63,6 +63,18 @@ describe("project scan to preset", () => {
       expect.arrayContaining(["local-tool", "UPPERCASE"]),
     );
 
+    const withoutForms = scanProjectForPreset(context, {
+      selectedIntegrationIds: ["zustand"],
+    });
+    expect(withoutForms.selection.formsAndValidation).toBeUndefined();
+    expect(withoutForms.selection.customPackages).toEqual(
+      expect.arrayContaining([
+        { name: "react-hook-form", version: "^7.50.0", dependencyType: "dependency" },
+        { name: "@hookform/resolvers", version: "^3.3.0", dependencyType: "dependency" },
+        { name: "zod", version: "^3.22.0", dependencyType: "dependency" },
+      ]),
+    );
+
     const sonner = scan.selection.customPackages.find((pkg) => pkg.name === "sonner");
     expect(sonner).toBeDefined();
     const chosenPackages = filterScannedPackages(scan.selection.customPackages, [
@@ -96,11 +108,13 @@ describe("project scan to preset", () => {
       "@radix-ui/react-dialog": "^1.1.0",
     };
     await fs.writeFile(packagePath, JSON.stringify(packageJson, null, 2));
+    await fs.writeFile(path.join(dir, "components.json"), "{}\n");
 
     await runSave("integrations-only", {
       cwd: dir,
       local: true,
       packageSelection: "none",
+      integrationSelection: "all",
     });
     const integrationsOnly = JSON.parse(
       await fs.readFile(path.join(dir, ".stackpack", "integrations-only.json"), "utf8"),
@@ -114,6 +128,7 @@ describe("project scan to preset", () => {
       cwd: dir,
       local: true,
       packageSelection: "all",
+      integrationSelection: "all",
     });
     const allPackages = JSON.parse(
       await fs.readFile(path.join(dir, ".stackpack", "all-packages.json"), "utf8"),
@@ -122,5 +137,16 @@ describe("project scan to preset", () => {
       sonner: "^2.0.0",
       "@radix-ui/react-dialog": "^1.1.0",
     });
+
+    await runSave("without-ui", {
+      cwd: dir,
+      local: true,
+      packageSelection: "none",
+      integrationSelection: ["zustand"],
+    });
+    const withoutUi = JSON.parse(
+      await fs.readFile(path.join(dir, ".stackpack", "without-ui.json"), "utf8"),
+    );
+    expect(withoutUi.integrations.map((entry: { id: string }) => entry.id)).toEqual(["zustand"]);
   });
 });

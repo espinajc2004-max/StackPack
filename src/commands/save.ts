@@ -112,9 +112,16 @@ function collectExtraDependencies(
 }
 
 /** Builds the exact selection that both `scan` and `save` use. */
-export function scanProjectForPreset(context: ProjectContext): ProjectPresetScan {
+export function scanProjectForPreset(
+  context: ProjectContext,
+  options: { selectedIntegrationIds?: Iterable<string> } = {},
+): ProjectPresetScan {
   const selection = createEmptySelection();
   const availabilities = filterIntegrations(context, allRecipes);
+  const selectedIntegrationIds =
+    options.selectedIntegrationIds === undefined
+      ? undefined
+      : new Set(options.selectedIntegrationIds);
   const occupiedCategories = new Set<string>();
   const categoryCollisions: string[] = [];
 
@@ -122,6 +129,12 @@ export function scanProjectForPreset(context: ProjectContext): ProjectPresetScan
     if (
       availability.compatibility !== "already-installed" &&
       availability.compatibility !== "partially-configured"
+    ) {
+      continue;
+    }
+    if (
+      selectedIntegrationIds !== undefined &&
+      !selectedIntegrationIds.has(availability.recipe.id)
     ) {
       continue;
     }
@@ -151,6 +164,41 @@ export function scanProjectForPreset(context: ProjectContext): ProjectPresetScan
   }
 
   return { selection, availabilities, skippedPackages: skipped, categoryCollisions };
+}
+
+function detectedIntegrationIds(scan: ProjectPresetScan): string[] {
+  return scan.availabilities
+    .filter(
+      (availability) =>
+        availability.compatibility === "already-installed" ||
+        availability.compatibility === "partially-configured",
+    )
+    .map((availability) => availability.recipe.id);
+}
+
+async function chooseDetectedIntegrationIds(scan: ProjectPresetScan): Promise<string[]> {
+  const detected = scan.availabilities.filter(
+    (availability) =>
+      availability.compatibility === "already-installed" ||
+      availability.compatibility === "partially-configured",
+  );
+  if (detected.length === 0) return [];
+
+  return guard(
+    await p.multiselect({
+      message: "Select detected integrations to include (space to toggle, enter to confirm)",
+      options: detected.map((availability) => ({
+        value: availability.recipe.id,
+        label: availability.recipe.name,
+        hint:
+          availability.compatibility === "partially-configured"
+            ? "partially configured"
+            : "detected",
+      })),
+      initialValues: detected.map((availability) => availability.recipe.id),
+      required: false,
+    }),
+  );
 }
 
 async function chooseScannedPackages(
@@ -228,6 +276,8 @@ export async function runSave(
     global?: boolean;
     cwd?: string;
     packageSelection?: PackageSelectionMode;
+    integrationSelection?: "all" | string[];
+    excludedIntegrationIds?: string[];
   },
 ): Promise<void> {
   const cwd = options.cwd ?? process.cwd();
@@ -243,7 +293,40 @@ export async function runSave(
     });
   }
 
-  const scan = scanProjectForPreset(context);
+  const initialScan = scanProjectForPreset(context);
+  const detectedIds = detectedIntegrationIds(initialScan);
+  let selectedIntegrationIds: string[];
+  if (options.excludedIntegrationIds !== undefined) {
+    const unknown = options.excludedIntegrationIds.filter((id) => !detectedIds.includes(id));
+    if (unknown.length > 0) {
+      throw new StackPackError(`Cannot exclude integration(s) that were not detected.`, {
+        hints: [
+          `Unknown or unavailable: ${unknown.join(", ")}`,
+          `Detected integration ids: ${detectedIds.join(", ") || "(none)"}`,
+        ],
+      });
+    }
+    selectedIntegrationIds = detectedIds.filter(
+      (id) => !options.excludedIntegrationIds?.includes(id),
+    );
+  } else if (Array.isArray(options.integrationSelection)) {
+    const unknown = options.integrationSelection.filter((id) => !detectedIds.includes(id));
+    if (unknown.length > 0) {
+      throw new StackPackError(`Cannot select integration(s) that were not detected.`, {
+        hints: [
+          `Unknown or unavailable: ${unknown.join(", ")}`,
+          `Detected integration ids: ${detectedIds.join(", ") || "(none)"}`,
+        ],
+      });
+    }
+    selectedIntegrationIds = options.integrationSelection;
+  } else if (options.integrationSelection === "all") {
+    selectedIntegrationIds = detectedIds;
+  } else {
+    selectedIntegrationIds = await chooseDetectedIntegrationIds(initialScan);
+  }
+
+  const scan = scanProjectForPreset(context, { selectedIntegrationIds });
   const selection = scan.selection;
   for (const skipped of scan.skippedPackages) {
     p.log.warn(
@@ -264,7 +347,7 @@ export async function runSave(
           .join(", ") || "(none)"
       }`,
       `Other portable packages\n  ${selection.customPackages.length}`,
-      "Detected integrations are always included. You control the other packages next.",
+      "Only the selected integrations are included. You control the other packages next.",
     ].join("\n\n"),
     "Scanned preset contents",
   );
