@@ -102,7 +102,14 @@ Existing React + Vite and Next.js projects are detected too (`stackpack add`, `s
 
 "Install only" means StackPack installs the official packages and stops — you write the setup files yourself, and the review says so explicitly.
 
-Plus custom npm packages (installed only, never auto-configured). Custom packages you type in are remembered locally so future setups can re-add them in one step.
+The **Additional npm Packages** category accepts any valid npm package that is
+not covered by StackPack's curated integrations. Enter a package name such as
+`nanoid`, a versioned package such as `lodash@^4.17.21`, or a scoped package.
+Choose whether it belongs in `dependencies` or `devDependencies`. It appears in
+the final review, installs with the project, is included when the setup is saved
+as a preset, and is restored when that preset creates another project. These
+packages are install-only; StackPack does not invent configuration files for
+unknown packages.
 
 Framework-specific filtering applies automatically — e.g. React Router is hidden on Next.js projects because Next.js provides routing.
 

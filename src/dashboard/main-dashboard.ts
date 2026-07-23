@@ -169,11 +169,15 @@ export async function runDashboard(
         testingLabel(selection),
         installedSummary(availabilities, "testing"),
       ),
-      categoryOption(
-        "custom-packages",
-        "Custom Packages",
-        customCount > 0 ? `${customCount} package${customCount === 1 ? "" : "s"}` : undefined,
-      ),
+      {
+        value: "custom-packages",
+        label:
+          customCount > 0 ? `Additional npm Packages ${pc.green("✓")}` : "Additional npm Packages",
+        hint:
+          customCount > 0
+            ? `${customCount} selected for this setup`
+            : "Install any npm package that is not listed above",
+      },
       { value: "versions", label: "Edit Package Versions" },
       { value: "review", label: reviewLabel },
     );

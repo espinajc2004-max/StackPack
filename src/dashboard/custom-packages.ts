@@ -5,9 +5,37 @@ import {
   loadConfig,
   rememberCustomPackages,
 } from "../storage/config-store.js";
-import type { SetupSelection } from "./state.js";
+import type { CustomPackage, SetupSelection } from "./state.js";
+
+export type AddCustomPackageResult =
+  { ok: true; entry: CustomPackage } | { ok: false; reason: string };
+
+/** Adds a validated npm package to the current setup without UI side effects. */
+export function addCustomPackageToSelection(
+  selection: SetupSelection,
+  input: string,
+  dependencyType: CustomPackage["dependencyType"],
+): AddCustomPackageResult {
+  const parsed = parsePackageSpecifier(input);
+  if (!parsed.ok) return parsed;
+  if (selection.customPackages.some((pkg) => pkg.name === parsed.value.name)) {
+    return { ok: false, reason: `${parsed.value.name} is already in this setup.` };
+  }
+  const entry = { ...parsed.value, dependencyType };
+  selection.customPackages.push(entry);
+  return { ok: true, entry };
+}
 
 export async function runCustomPackagesCategory(selection: SetupSelection): Promise<void> {
+  p.note(
+    [
+      "Use this for any npm package that is not listed in StackPack's integration categories.",
+      "Accepted formats: package-name, package-name@version, or @scope/package@version.",
+      "Packages added here appear in the review, install with the project, and are included when you save the setup as a preset.",
+    ].join("\n\n"),
+    "Add any npm package",
+  );
+
   for (;;) {
     const config = await loadConfig();
     const saved = config.savedCustomPackages ?? [];
@@ -17,19 +45,19 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
 
     const action = orBack(
       await p.select({
-        message: `Custom packages (${selection.customPackages.length} added)`,
+        message: `Additional npm packages (${selection.customPackages.length} in this setup)`,
         options: [
           {
             value: "add",
-            label: "Add an npm package",
-            hint: "typed packages are saved for future setups",
+            label: "Enter a package name",
+            hint: "add a package that is not available in the categories",
           },
           ...(savedSelectable.length > 0
             ? [
                 {
                   value: "saved",
-                  label: "Add from saved packages",
-                  hint: `${savedSelectable.length} saved earlier`,
+                  label: "Choose from previously entered packages",
+                  hint: `${savedSelectable.length} available on this device`,
                 },
               ]
             : []),
@@ -103,8 +131,8 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
 
     const input = orBack(
       await p.text({
-        message: "Enter an npm package (name or name@version, Esc to go back)",
-        placeholder: "sonner@latest",
+        message: "Package to install (Esc to go back)",
+        placeholder: "e.g. nanoid or lodash@^4.17.21",
         validate(value) {
           const result = parsePackageSpecifier(value ?? "");
           return result.ok ? undefined : result.reason;
@@ -115,30 +143,42 @@ export async function runCustomPackagesCategory(selection: SetupSelection): Prom
     const parsed = parsePackageSpecifier(input);
     if (!parsed.ok) continue;
 
-    if (selection.customPackages.some((pkg) => pkg.name === parsed.value.name)) {
-      p.log.warn(`${parsed.value.name} is already in the custom package list.`);
-      continue;
-    }
-
     const dependencyType = orBack(
       await p.select({
         message: "Add package as",
         options: [
-          { value: "dependency", label: "dependency" },
-          { value: "devDependency", label: "devDependency" },
+          {
+            value: "dependency",
+            label: "Runtime dependency",
+            hint: "saved under dependencies; available to application code",
+          },
+          {
+            value: "devDependency",
+            label: "Development dependency",
+            hint: "saved under devDependencies; for build, test, or tooling",
+          },
         ],
       }),
     ) as "dependency" | "devDependency" | null;
     if (dependencyType === null) continue;
 
     p.note(
-      "StackPack does not have a verified automatic recipe for this package.\nIt will be installed only. No configuration files will be generated.",
+      [
+        "Installation: package only; no configuration files will be generated.",
+        "Current setup: included in the final review and installation.",
+        "Saved preset: included automatically if you save this setup after installation.",
+      ].join("\n"),
       formatPackageSpecifier(parsed.value),
     );
 
-    const entry = { ...parsed.value, dependencyType };
-    selection.customPackages.push(entry);
-    await rememberCustomPackages([entry]);
-    p.log.success(`Added ${formatPackageSpecifier(parsed.value)} — saved for future setups too.`);
+    const added = addCustomPackageToSelection(selection, input, dependencyType);
+    if (!added.ok) {
+      p.log.warn(added.reason);
+      continue;
+    }
+    await rememberCustomPackages([added.entry]);
+    p.log.success(
+      `Added ${formatPackageSpecifier(added.entry)} to this setup. It will also be available as a suggestion next time.`,
+    );
   }
 }

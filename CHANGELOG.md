@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Detected integrations can now be deselected before package selection. Their
   installed packages return to the ordinary package picker, and
   `--exclude-integration <ids...>` supports repeatable automation.
+- The custom-package dashboard is now labeled **Additional npm Packages** and
+  explains accepted input, runtime versus development dependencies, install-only
+  behavior, and automatic preset persistence.
 
 ### Fixed
 

@@ -128,3 +128,55 @@ npm resolved the saved semver ranges to the newest compatible releases during
 installation. For example, Prisma `^7.2.0` resolved to `7.9.0`. This is expected
 semver behavior: the preset preserves the accepted range, while npm chooses the
 current matching version at install time.
+
+## Additional npm package lifecycle
+
+### Problem discovered
+
+The custom-package screen used `sonner@latest` as its only example and labeled
+the category "Custom Packages." This made the feature look Sonner-specific and
+did not clearly explain that it accepts any npm package missing from the curated
+integration categories. The dependency-type question also exposed raw manifest
+field names without explaining their effect.
+
+### Fix
+
+The dashboard now calls the category **Additional npm Packages** and describes
+its purpose before asking for input. The input shows multiple accepted forms,
+including unversioned, versioned, and scoped packages. The dependency choice is
+presented as **Runtime dependency** or **Development dependency**, with the
+matching `package.json` section explained in the hint.
+
+### Added behavior
+
+After a package is selected, StackPack explicitly states that:
+
+1. The package is install-only and receives no invented configuration.
+2. It is included in the current setup's review and installation.
+3. It is included automatically if the completed setup is saved as a preset.
+4. It remains available as a local suggestion for later setups.
+
+The package addition logic is shared with tests, so validation, duplicate-name
+protection, dependency type, preset serialization, preset loading, and install
+planning follow one path.
+
+### Validation result
+
+The full lifecycle was tested with `nanoid`, which is not a curated StackPack
+integration:
+
+1. `nanoid@^5.1.5` was added as a runtime dependency through the same helper used
+   by the dashboard.
+2. A preset was saved with no curated integrations and `nanoid` as its only
+   custom dependency.
+3. The preset was loaded into a fresh official Next.js TypeScript project.
+4. The installation plan identified `nanoid` as requested by `custom package`
+   and ran `npm install --save nanoid@^5.1.5`.
+5. `npm ls nanoid --depth=0` confirmed `nanoid@5.1.16` was installed.
+6. A runtime ESM import generated a valid 21-character Nano ID.
+7. `next build` completed successfully.
+8. A final StackPack scan reported no curated integrations and exactly one
+   other portable package: `nanoid`.
+
+This verifies that a package entered manually is retained in the saved preset
+and installed when that preset is used for a new project.
