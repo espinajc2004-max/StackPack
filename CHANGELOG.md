@@ -4,6 +4,21 @@ All notable changes to StackPack are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+
+- Full-project scans now preserve detected integration version ranges as preset
+  overrides and preview the packages that can be reproduced.
+- Scan and save now share one validated classification path. Non-portable
+  dependency specifiers are reported and skipped, and same-category integration
+  collisions are preserved as custom packages.
+
+### Fixed
+
+- Package installation retries transient network failures such as `ECONNRESET`
+  up to three times with backoff while deterministic errors still fail fast.
+
 ## [0.3.4] - 2026-07-20
 
 ### Added

@@ -7,10 +7,11 @@ import { addToSelection } from "./selection-utils.js";
 import { buildPresetFromSelection } from "./shared.js";
 import { presetExists, savePreset } from "../storage/preset-store.js";
 import { validatePresetName } from "../utils/names.js";
-import { parseVersionSpec } from "../utils/versions.js";
+import { parsePackageSpecifier } from "../utils/package-specifier.js";
 import { StackPackError } from "../utils/errors.js";
 import type { ProjectContext } from "../schemas/project-context.js";
 import type { SetupSelection } from "../dashboard/state.js";
+import type { IntegrationAvailability } from "../engine/filter-integrations.js";
 
 /**
  * Packages the official creators scaffold themselves. They are not saved in
@@ -47,15 +48,29 @@ const SCAFFOLD_PACKAGES = new Set([
   "@types/babel__core",
 ]);
 
+export type SkippedScannedPackage = {
+  name: string;
+  version: string;
+  reason: string;
+};
+
+export type ProjectPresetScan = {
+  selection: SetupSelection;
+  availabilities: IntegrationAvailability[];
+  skippedPackages: SkippedScannedPackage[];
+  categoryCollisions: string[];
+};
+
 /**
  * Every dependency that is neither owned by a detected integration nor part
  * of the base scaffold is captured as a custom package, so the preset
- * reproduces the full tech stack.
+ * reproduces the full portable tech stack. Unsupported npm specifiers are
+ * reported instead of making the final preset fail schema validation.
  */
 function collectExtraDependencies(
   context: ProjectContext,
   selection: SetupSelection,
-): CustomPackage[] {
+): { packages: CustomPackage[]; skipped: SkippedScannedPackage[] } {
   const recipeOwned = new Set<string>();
   for (const { recipe, options } of selectedRecipes(selection)) {
     for (const pkg of recipe.createPlan(context, options).packages) {
@@ -63,6 +78,7 @@ function collectExtraDependencies(
     }
   }
   const extras: CustomPackage[] = [];
+  const skipped: SkippedScannedPackage[] = [];
   const sections: Array<[Record<string, string>, CustomPackage["dependencyType"]]> = [
     [context.packageJson.dependencies ?? {}, "dependency"],
     [context.packageJson.devDependencies ?? {}, "devDependency"],
@@ -70,14 +86,57 @@ function collectExtraDependencies(
   for (const [packages, dependencyType] of sections) {
     for (const [name, version] of Object.entries(packages)) {
       if (recipeOwned.has(name) || SCAFFOLD_PACKAGES.has(name)) continue;
-      if (parseVersionSpec(version) === null) {
-        p.log.warn(`Skipping ${name}: version "${version}" cannot be stored in a preset.`);
+      const parsed = parsePackageSpecifier(`${name}@${version}`);
+      if (!parsed.ok) {
+        skipped.push({ name, version, reason: parsed.reason });
         continue;
       }
       extras.push({ name, version, dependencyType });
     }
   }
-  return extras;
+  return { packages: extras, skipped };
+}
+
+/** Builds the exact selection that both `scan` and `save` use. */
+export function scanProjectForPreset(context: ProjectContext): ProjectPresetScan {
+  const selection = createEmptySelection();
+  const availabilities = filterIntegrations(context, allRecipes);
+  const occupiedCategories = new Set<string>();
+  const categoryCollisions: string[] = [];
+
+  for (const availability of availabilities) {
+    if (
+      availability.compatibility !== "already-installed" &&
+      availability.compatibility !== "partially-configured"
+    ) {
+      continue;
+    }
+    const category = availability.recipe.category;
+    if (category !== "testing" && occupiedCategories.has(category)) {
+      categoryCollisions.push(availability.recipe.name);
+      continue;
+    }
+    if (addToSelection(selection, availability.recipe.id, {}) && category !== "testing") {
+      occupiedCategories.add(category);
+    }
+  }
+
+  const { packages, skipped } = collectExtraDependencies(context, selection);
+  selection.customPackages = packages;
+
+  // Recognized integrations normally declare "latest" in their recipes.
+  // A scanned preset must reproduce the versions in the source manifest.
+  for (const { recipe, options } of selectedRecipes(selection)) {
+    for (const pkg of recipe.createPlan(context, options).packages) {
+      const installedVersion = context.installedPackages[pkg.name];
+      if (installedVersion === undefined) continue;
+      const parsed = parsePackageSpecifier(`${pkg.name}@${installedVersion}`);
+      if (parsed.ok) selection.versionOverrides[pkg.name] = installedVersion;
+      else skipped.push({ name: pkg.name, version: installedVersion, reason: parsed.reason });
+    }
+  }
+
+  return { selection, availabilities, skippedPackages: skipped, categoryCollisions };
 }
 
 /**
@@ -101,17 +160,18 @@ export async function runSave(
     });
   }
 
-  const selection = createEmptySelection();
-  const availabilities = filterIntegrations(context, allRecipes);
-  for (const availability of availabilities) {
-    if (
-      availability.compatibility === "already-installed" ||
-      availability.compatibility === "partially-configured"
-    ) {
-      addToSelection(selection, availability.recipe.id, {});
-    }
+  const scan = scanProjectForPreset(context);
+  const selection = scan.selection;
+  for (const skipped of scan.skippedPackages) {
+    p.log.warn(
+      `Skipping ${skipped.name}@${skipped.version}: it cannot be stored in a portable preset (${skipped.reason}).`,
+    );
   }
-  selection.customPackages = collectExtraDependencies(context, selection);
+  if (scan.categoryCollisions.length > 0) {
+    p.log.warn(
+      `These additional detected integrations share a single-choice dashboard category and were saved as custom packages instead: ${scan.categoryCollisions.join(", ")}.`,
+    );
+  }
 
   const scope: "global" | "local" = options.local ? "local" : "global";
   const preset = buildPresetFromSelection({ name, scope, context, selection });

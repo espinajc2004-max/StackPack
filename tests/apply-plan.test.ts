@@ -151,14 +151,51 @@ describe("applyPlan", () => {
     const dir = await tempDir();
     await writeViteReactProject(dir);
     const plan = await fixturePlan(dir);
-    const failingRunner: CommandRunner = async () => ({
-      exitCode: 1,
-      stdout: "",
-      stderr: "npm ERR! network failure",
-    });
+    let attempts = 0;
+    const failingRunner: CommandRunner = async () => {
+      attempts += 1;
+      return {
+        exitCode: 1,
+        stdout: "",
+        stderr: "npm ERR! dependency resolution failure",
+      };
+    };
 
     await expect(applyPlan(plan, { dryRun: false, runner: failingRunner })).rejects.toThrow(
       /exit code 1/,
     );
+    expect(attempts).toBe(1);
+  });
+
+  it("retries transient package-manager network resets and then continues", async () => {
+    const dir = await tempDir();
+    await writeViteReactProject(dir);
+    const plan = await fixturePlan(dir);
+    const progress: string[] = [];
+    let dependencyAttempts = 0;
+    const flakyRunner: CommandRunner = async (cmd) => {
+      if (cmd.args.includes("--save")) {
+        dependencyAttempts += 1;
+        if (dependencyAttempts < 3) {
+          return {
+            exitCode: 1,
+            stdout: "",
+            stderr: "npm error code ECONNRESET\nnpm error network aborted",
+          };
+        }
+      }
+      return { exitCode: 0, stdout: "", stderr: "" };
+    };
+
+    const result = await applyPlan(plan, {
+      dryRun: false,
+      runner: flakyRunner,
+      networkRetryDelayMs: 0,
+      onProgress: (message) => progress.push(message),
+    });
+
+    expect(dependencyAttempts).toBe(3);
+    expect(result.commandsRun.filter((command) => command.includes(" --save "))).toHaveLength(3);
+    expect(progress.filter((message) => message.includes("Network connection"))).toHaveLength(2);
   });
 });

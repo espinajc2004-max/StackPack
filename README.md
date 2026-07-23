@@ -170,6 +170,9 @@ npm run check        # typecheck + lint + format check + tests + build
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the contribution process.
 
+For network-install failures and details about how full-project scans become
+presets, see [Troubleshooting installs and project scans](docs/TROUBLESHOOTING.md).
+
 ## License
 
 [MIT](LICENSE)

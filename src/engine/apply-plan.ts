@@ -29,6 +29,8 @@ export type ApplyOptions = {
   scriptResolutions?: Record<string, ScriptConflictResolution>;
   /** Progress callback for the UI. */
   onProgress?: (message: string) => void;
+  /** Override the retry backoff in tests; production defaults to one second. */
+  networkRetryDelayMs?: number;
 };
 
 export type ApplyResult = {
@@ -49,24 +51,59 @@ function renameWithSuffix(filePath: string): string {
     : `${filePath}.stackpack`;
 }
 
+function isTransientNetworkFailure(stdout: string, stderr: string): boolean {
+  return /\b(?:ECONNRESET|ETIMEDOUT|EAI_AGAIN|ECONNREFUSED|ENETUNREACH|ENOTFOUND|ERR_SOCKET_TIMEOUT)\b|socket hang up|network aborted|network timeout|fetch failed/i.test(
+    `${stdout}\n${stderr}`,
+  );
+}
+
+async function wait(delayMs: number): Promise<void> {
+  if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
 async function runOrThrow(
   runner: CommandRunner,
   cmd: CommandDefinition,
   what: string,
   commandsRun: string[],
+  options: {
+    retryTransientNetworkErrors?: boolean;
+    retryDelayMs?: number;
+    onRetry?: (message: string) => void;
+  } = {},
 ): Promise<void> {
-  commandsRun.push(formatCommand(cmd));
-  const result = await runner(cmd);
-  if (result.exitCode !== 0) {
-    const stderrTail = result.stderr.split("\n").slice(-15).join("\n").trim();
-    throw new StackPackError(`${what} failed with exit code ${result.exitCode}.`, {
-      hints: [
-        `Command: ${formatCommand(cmd)}`,
-        ...(stderrTail.length > 0 ? [stderrTail] : []),
-        "The project may contain partial changes; a backup was created before installation.",
-      ],
-    });
+  const maxAttempts = options.retryTransientNetworkErrors ? 3 : 1;
+  let result = { exitCode: 1, stdout: "", stderr: "" };
+  let attempts = 0;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    attempts = attempt;
+    commandsRun.push(formatCommand(cmd));
+    result = await runner(cmd);
+    if (result.exitCode === 0) return;
+    if (!isTransientNetworkFailure(result.stdout, result.stderr) || attempt === maxAttempts) break;
+
+    options.onRetry?.(
+      `Network connection was interrupted; retrying ${what.toLowerCase()} (${attempt + 1}/${maxAttempts})...`,
+    );
+    await wait((options.retryDelayMs ?? 1_000) * 2 ** (attempt - 1));
   }
+
+  const stderrTail = result.stderr.split("\n").slice(-15).join("\n").trim();
+  const retried = attempts > 1;
+  throw new StackPackError(`${what} failed with exit code ${result.exitCode}.`, {
+    hints: [
+      `Command: ${formatCommand(cmd)}`,
+      ...(retried
+        ? [`StackPack tried this command ${attempts} times after transient network failures.`]
+        : []),
+      ...(stderrTail.length > 0 ? [stderrTail] : []),
+      ...(retried
+        ? ["Check registry connectivity and package-manager proxy settings, then retry."]
+        : []),
+      "The project may contain partial changes; a backup was created before installation.",
+    ],
+  });
 }
 
 /**
@@ -152,6 +189,11 @@ export async function applyPlan(
         dependencyInstall,
         "Package installation",
         result.commandsRun,
+        {
+          retryTransientNetworkErrors: true,
+          retryDelayMs: options.networkRetryDelayMs,
+          onRetry: progress,
+        },
       );
     }
     if (devDependencyInstall) {
@@ -161,6 +203,11 @@ export async function applyPlan(
         devDependencyInstall,
         "Development package installation",
         result.commandsRun,
+        {
+          retryTransientNetworkErrors: true,
+          retryDelayMs: options.networkRetryDelayMs,
+          onRetry: progress,
+        },
       );
     }
 
