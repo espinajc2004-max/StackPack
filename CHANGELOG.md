@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-07-23
+
+### Added
+
+- Preset saving now offers a grouped dependency picker, so scanned runtime and
+  development packages can be selectively included instead of automatically
+  saving every package. `--all-packages` and `--integrations-only` provide
+  non-interactive choices.
+- Detected integrations can now be deselected before package selection. Their
+  installed packages return to the ordinary package picker, and
+  `--exclude-integration <ids...>` supports repeatable automation.
+- Automated coverage now verifies that an additional npm package survives setup
+  selection, preset serialization, preset loading, dependency planning, and
+  installation planning for both runtime and development dependencies.
+
 ### Changed
 
 - Full-project scans now preserve detected integration version ranges as preset
@@ -13,20 +28,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Scan and save now share one validated classification path. Non-portable
   dependency specifiers are reported and skipped, and same-category integration
   collisions are preserved as custom packages.
-- Preset saving now offers a grouped dependency picker, so scanned runtime and
-  development packages can be selectively included. `--all-packages` and
-  `--integrations-only` provide non-interactive choices.
-- Detected integrations can now be deselected before package selection. Their
-  installed packages return to the ordinary package picker, and
-  `--exclude-integration <ids...>` supports repeatable automation.
 - The custom-package dashboard is now labeled **Additional npm Packages** and
   explains accepted input, runtime versus development dependencies, install-only
-  behavior, and automatic preset persistence.
+  behavior, review and installation behavior, and automatic preset persistence.
 
 ### Fixed
 
 - Package installation retries transient network failures such as `ECONNRESET`
   up to three times with backoff while deterministic errors still fail fast.
+- Scanning a large project no longer forces all detected dependencies, including
+  downloaded UI component packages, into the saved preset.
+- Packages belonging to an excluded detected integration are no longer silently
+  retained as that integration; they become individually selectable packages.
 
 ## [0.3.4] - 2026-07-20
 
